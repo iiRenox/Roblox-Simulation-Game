@@ -15,7 +15,9 @@ function NatureService.generateWorld()
     for x = 1, xSize do
         for z = 1, zSize do
             -- Calculate the height at this point using Perlin noise
-            local y = math.noise(x / smoothness, z / smoothness, seed) * yMultiplier
+            -- We add 0.5 to shift the noise from approx. [-0.5, 0.5] to [0, 1].
+            -- This ensures the final terrain column height is always positive, fixing the "Extents" error.
+            local y = (math.noise(x / smoothness, z / smoothness, seed) + 0.5) * yMultiplier
 
             -- Define the terrain block (column)
             local size = Vector3.new(4, y - baseHeight, 4)
