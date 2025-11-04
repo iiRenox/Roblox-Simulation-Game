@@ -1,6 +1,7 @@
 local NatureService = {}
 
 function NatureService.generateWorld()
+    print("Starting world generation...")
     local terrain = workspace.Terrain
 
     -- Generation parameters
@@ -23,9 +24,13 @@ function NatureService.generateWorld()
     local heightMap = {}
 
     -- 1. Generate the base terrain heights and store them in the heightMap
+    print("Generating height map...")
     for x = 1, xSize do
         heightMap[x] = {}
         for z = 1, zSize do
+            if z % 50 == 0 then
+                task.wait()
+            end
             local worldX = x - xSize / 2
             local worldZ = z - zSize / 2
 
@@ -38,13 +43,20 @@ function NatureService.generateWorld()
             heightMap[x][z] = continentNoise + mountainNoise + detailNoise
         end
     end
+    print("Height map generation complete.")
 
     -- 2. Carve rivers into the heightMap
+    print("Generating rivers...")
     NatureService.generateRivers(heightMap, xSize, zSize)
+    print("River generation complete.")
 
     -- 3. Render the terrain from the heightMap
+    print("Rendering terrain...")
     for x = 1, xSize do
         for z = 1, zSize do
+            if z % 50 == 0 then
+                task.wait()
+            end
             local y = heightMap[x][z]
             local worldX = x - xSize / 2
             local worldZ = z - zSize / 2
@@ -77,23 +89,32 @@ function NatureService.generateWorld()
             end
         end
     end
+    print("World generation complete.")
 end
 
 function NatureService.start()
     print("NatureService started")
 
-    -- Clear all existing terrain
-    workspace.Terrain:Clear()
+    local onFinished = Instance.new("BindableEvent")
 
-    -- Destroy any old terrain parts from previous versions
-    for _, child in ipairs(workspace:GetChildren()) do
-        if child.Name == "TerrainBlock" or child.Name == "Baseplate" then
-            child:Destroy()
+    coroutine.wrap(function()
+        -- Clear all existing terrain
+        workspace.Terrain:Clear()
+
+        -- Destroy any old terrain parts from previous versions
+        for _, child in ipairs(workspace:GetChildren()) do
+            if child.Name == "TerrainBlock" or child.Name == "Baseplate" then
+                child:Destroy()
+            end
         end
-    end
 
-    -- Generate the new terrain
-    NatureService.generateWorld()
+        -- Generate the new terrain
+        NatureService.generateWorld()
+
+        onFinished:Fire()
+    end)()
+
+    return onFinished.Event
 end
 
 function NatureService.generateRivers(heightMap, xSize, zSize)

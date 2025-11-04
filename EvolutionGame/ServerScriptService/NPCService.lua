@@ -4,13 +4,16 @@ local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NPCService = {}
 
 function NPCService.spawnNPC()
+    print("Attempting to spawn an NPC...")
     -- Spawn within the full range of the generated world
     local x = math.random(-1024, 1024)
     local z = math.random(-1024, 1024)
+    print("Generated coordinates: " .. x .. ", " .. z)
 
     local groundPosition = WorldUtil.getGroundPosition(x, z)
 
     if groundPosition then
+        print("Ground found at: " .. tostring(groundPosition))
         local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
 
         local npc = Instance.new("Model")
@@ -43,6 +46,9 @@ function NPCService.spawnNPC()
 
         -- Move the NPC to the spawn position
         npc:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+        print("NPC spawned successfully at: " .. tostring(spawnPosition))
+    else
+        print("Failed to find ground for NPC at: " .. x .. ", " .. z)
     end
 end
 

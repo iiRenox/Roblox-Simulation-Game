@@ -4,6 +4,9 @@ local NatureService = require(ServerScriptService.NatureService)
 local AnimalService = require(ServerScriptService.AnimalService)
 local NPCService = require(ServerScriptService.NPCService)
 
-NatureService.start()
+local onNatureFinished = NatureService.start()
+
+onNatureFinished:Wait()
+
 AnimalService.start()
 NPCService.start()

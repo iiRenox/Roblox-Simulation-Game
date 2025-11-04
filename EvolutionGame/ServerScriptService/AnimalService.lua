@@ -4,13 +4,16 @@ local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local AnimalService = {}
 
 function AnimalService.spawnAnimal()
+    print("Attempting to spawn an animal...")
     -- Spawn within the full range of the generated world
     local x = math.random(-1024, 1024)
     local z = math.random(-1024, 1024)
+    print("Generated coordinates: " .. x .. ", " .. z)
 
     local groundPosition = WorldUtil.getGroundPosition(x, z)
 
     if groundPosition then
+        print("Ground found at: " .. tostring(groundPosition))
         local y = groundPosition.Y + 2
 
         local animal = Instance.new("Part")
@@ -20,6 +23,9 @@ function AnimalService.spawnAnimal()
         animal.Anchored = false -- Animals should be able to move
         animal.Name = "Animal"
         animal.Color = Color3.fromRGB(150, 75, 0) -- Brown
+        print("Animal spawned successfully at: " .. tostring(animal.Position))
+    else
+        print("Failed to find ground for animal at: " .. x .. ", " .. z)
     end
 end
 
