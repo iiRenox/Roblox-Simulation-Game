@@ -4,28 +4,77 @@ function NatureService.generateWorld()
     local terrain = workspace.Terrain
 
     -- Generation parameters
-    local xSize = 256
-    local zSize = 256
-    local yMultiplier = 40
-    local smoothness = 50
+    local xSize = 512 -- Increased size for a larger world
+    local zSize = 512 -- Increased size for a larger world
     local seed = math.random(1, 1000)
     local baseHeight = -20
 
-    -- Create a grid of terrain heights
+    -- Noise parameters for multiple layers
+    local continentSmothness = 200
+    local continentMultiplier = 100
+
+    local mountainSmothness = 50
+    local mountainMultiplier = 40
+
+    local detailSmothness = 10
+    local detailMultiplier = 5
+
+    -- Create a height map to store the terrain data before rendering
+    local heightMap = {}
+
+    -- 1. Generate the base terrain heights and store them in the heightMap
+    for x = 1, xSize do
+        heightMap[x] = {}
+        for z = 1, zSize do
+            local worldX = x - xSize / 2
+            local worldZ = z - zSize / 2
+
+            -- Calculate each noise layer
+            local continentNoise = (math.noise(worldX / continentSmothness, worldZ / continentSmothness, seed)) * continentMultiplier
+            local mountainNoise = (math.noise(worldX / mountainSmothness, worldZ / mountainSmothness, seed + 1)) * mountainMultiplier
+            local detailNoise = (math.noise(worldX / detailSmothness, worldZ / detailSmothness, seed + 2)) * detailMultiplier
+
+            -- Combine the noise layers to get the final height
+            heightMap[x][z] = continentNoise + mountainNoise + detailNoise
+        end
+    end
+
+    -- 2. Carve rivers into the heightMap
+    NatureService.generateRivers(heightMap, xSize, zSize)
+
+    -- 3. Render the terrain from the heightMap
     for x = 1, xSize do
         for z = 1, zSize do
-            -- Calculate the height at this point using Perlin noise
-            -- We add 0.5 to shift the noise from approx. [-0.5, 0.5] to [0, 1].
-            -- This ensures the final terrain column height is always positive, fixing the "Extents" error.
-            local y = (math.noise(x / smoothness, z / smoothness, seed) + 0.5) * yMultiplier
+            local y = heightMap[x][z]
+            local worldX = x - xSize / 2
+            local worldZ = z - zSize / 2
 
             -- Define the terrain block (column)
             local size = Vector3.new(4, y - baseHeight, 4)
-            local position = Vector3.new(x * 4, baseHeight + size.Y / 2, z * 4)
+            local position = Vector3.new(worldX * 4, baseHeight + size.Y / 2, worldZ * 4)
             local cframe = CFrame.new(position)
 
-            -- Fill the block with grass
-            terrain:FillBlock(cframe, size, Enum.Material.Grass)
+            -- Determine the material based on the height to create biomes
+            local material
+            if y > 50 then
+                material = Enum.Material.Snow
+            elseif y > 30 then
+                material = Enum.Material.Rock
+            elseif y > 0 then
+                material = Enum.Material.Grass
+            else
+                material = Enum.Material.Water
+            end
+
+            -- If the material is water, fill it up to the sea level
+            if material == Enum.Material.Water then
+                local waterSize = Vector3.new(4, 0 - baseHeight, 4)
+                local waterPosition = Vector3.new(worldX * 4, baseHeight + waterSize.Y / 2, worldZ * 4)
+                terrain:FillBlock(CFrame.new(waterPosition), waterSize, Enum.Material.Water)
+            else
+                -- Fill the block with the determined material
+                terrain:FillBlock(cframe, size, material)
+            end
         end
     end
 end
@@ -45,6 +94,60 @@ function NatureService.start()
 
     -- Generate the new terrain
     NatureService.generateWorld()
+end
+
+function NatureService.generateRivers(heightMap, xSize, zSize)
+    local seaLevel = 0
+    local numRivers = 15
+    local riverDepth = 10
+
+    for i = 1, numRivers do
+        -- Find a random starting point for the river at a high elevation
+        local startX, startZ
+        local startHeight = -math.huge
+
+        for i=1, 10 do -- Try 10 times to find a high point
+            local tryX = math.random(1, xSize)
+            local tryZ = math.random(1, zSize)
+            if heightMap[tryX][tryZ] > startHeight then
+                startX = tryX
+                startZ = tryZ
+                startHeight = heightMap[tryX][tryZ]
+            end
+        end
+
+        -- Carve the river path from the starting point
+        local currentX = startX
+        local currentZ = startZ
+        while heightMap[currentX][currentZ] > seaLevel do
+            heightMap[currentX][currentZ] = heightMap[currentX][currentZ] - riverDepth
+
+            -- Find the lowest neighbor to continue the path
+            local lowestNeighborX, lowestNeighborZ = currentX, currentZ
+            local lowestHeight = heightMap[currentX][currentZ]
+
+            for nx = -1, 1 do
+                for nz = -1, 1 do
+                    local nextX = currentX + nx
+                    local nextZ = currentZ + nz
+
+                    if nextX > 0 and nextX <= xSize and nextZ > 0 and nextZ <= zSize and heightMap[nextX][nextZ] < lowestHeight then
+                        lowestHeight = heightMap[nextX][nextZ]
+                        lowestNeighborX = nextX
+                        lowestNeighborZ = nextZ
+                    end
+                end
+            end
+
+            -- If we are stuck in a local minimum, stop carving
+            if lowestNeighborX == currentX and lowestNeighborZ == currentZ then
+                break
+            end
+
+            currentX = lowestNeighborX
+            currentZ = lowestNeighborZ
+        end
+    end
 end
 
 return NatureService

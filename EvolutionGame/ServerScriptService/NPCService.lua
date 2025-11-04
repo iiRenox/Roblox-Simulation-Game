@@ -4,8 +4,9 @@ local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NPCService = {}
 
 function NPCService.spawnNPC()
-    local x = math.random(1, 1024)
-    local z = math.random(1, 1024)
+    -- Spawn within the full range of the generated world
+    local x = math.random(-1024, 1024)
+    local z = math.random(-1024, 1024)
 
     local groundPosition = WorldUtil.getGroundPosition(x, z)
 
