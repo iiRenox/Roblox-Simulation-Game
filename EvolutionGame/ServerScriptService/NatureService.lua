@@ -1,3 +1,5 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NatureService = {}
 
 function NatureService.generateWorld()
@@ -11,14 +13,20 @@ function NatureService.generateWorld()
     local baseHeight = -20
 
     -- Noise parameters for multiple layers
-    local continentSmothness = 200
+    local continentSmothness = 400
     local continentMultiplier = 100
 
-    local mountainSmothness = 50
-    local mountainMultiplier = 40
+    local mountainSmothness = 150
+    local mountainMultiplier = 60
 
-    local detailSmothness = 10
-    local detailMultiplier = 5
+    local detailSmothness = 20
+    local detailMultiplier = 10
+
+    -- Noise parameters for craggy rock formations
+    local craggySmothness = 15
+    local craggyMultiplier = 25
+    local cragginessMaskSmothness = 100
+    local cragginessMaskThreshold = 0.6
 
     -- Create a height map to store the terrain data before rendering
     local heightMap = {}
@@ -36,10 +44,19 @@ function NatureService.generateWorld()
             local mountainNoise = (math.noise(worldX / mountainSmothness, worldZ / mountainSmothness, seed + 1)) * mountainMultiplier
             local detailNoise = (math.noise(worldX / detailSmothness, worldZ / detailSmothness, seed + 2)) * detailMultiplier
 
+            -- Calculate craggy noise and a mask to control where it appears
+            local cragginessMask = (math.noise(worldX / cragginessMaskSmothness, worldZ / cragginessMaskSmothness, seed + 3) + 1) / 2
+            local craggyNoise = 0
+            if cragginessMask > cragginessMaskThreshold then
+                craggyNoise = (math.noise(worldX / craggySmothness, worldZ / craggySmothness, seed + 4) * craggyMultiplier) * ((cragginessMask - cragginessMaskThreshold) / (1 - cragginessMaskThreshold))
+            end
+
             -- Combine the noise layers to get the final height
-            heightMap[x][z] = continentNoise + mountainNoise + detailNoise
+            heightMap[x][z] = continentNoise + mountainNoise + detailNoise + craggyNoise
         end
-        task.wait()
+        if x % 16 == 0 then
+            task.wait()
+        end
     end
     print("Height map generation complete.")
 
@@ -63,9 +80,9 @@ function NatureService.generateWorld()
 
             -- Determine the material based on the height to create biomes
             local material
-            if y > 50 then
+            if y > 100 then
                 material = Enum.Material.Snow
-            elseif y > 30 then
+            elseif y > 50 then
                 material = Enum.Material.Rock
             elseif y > 0 then
                 material = Enum.Material.Grass
@@ -83,33 +100,67 @@ function NatureService.generateWorld()
                 terrain:FillBlock(cframe, size, material)
             end
         end
-        task.wait()
+        if x % 16 == 0 then
+            task.wait()
+        end
     end
     print("World generation complete.")
 
-    NatureService.generateTrees(heightMap, xSize, zSize, baseHeight)
+    NatureService.generateTrees(xSize, zSize)
+    NatureService.generateFlowers(xSize, zSize)
 end
 
-function NatureService.generateTrees(heightMap, xSize, zSize, baseHeight)
-    print("Generating trees...")
-    local treeDensity = 0.05 -- 5% chance of a tree spawning in a valid location
+function NatureService.generateFlowers(xSize, zSize)
+    local flowerDensity = 0.8
+    local numFlowers = math.floor(xSize * zSize * flowerDensity)
 
-    for x = 1, xSize do
-        for z = 1, zSize do
-            if math.random() < treeDensity then
-                local y = heightMap[x][z]
+    for i = 1, numFlowers do
+        local x = math.random(1, xSize)
+        local z = math.random(1, zSize)
 
-                -- Only spawn trees on grass
-                if y > 0 and y <= 30 then
-                    local worldX = (x - xSize / 2) * 4
-                    local worldZ = (z - zSize / 2) * 4
-                    local groundPosition = Vector3.new(worldX, y + baseHeight, worldZ)
+        local worldX = (x - xSize / 2) * 4
+        local worldZ = (z - zSize / 2) * 4
 
-                    NatureService.createTree(groundPosition)
-                end
+        local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+
+        if groundPosition then
+            local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+            if material == Enum.Material.Grass then
+                NatureService.createFlower(groundPosition)
             end
         end
-        task.wait()
+
+        if i % 200 == 0 then
+            task.wait()
+        end
+    end
+end
+
+function NatureService.generateTrees(xSize, zSize)
+    local treeDensity = 0.4
+    local numTrees = math.floor(xSize * zSize * treeDensity)
+
+    for i = 1, numTrees do
+        local x = math.random(1, xSize)
+        local z = math.random(1, zSize)
+
+        local worldX = (x - xSize / 2) * 4
+        local worldZ = (z - zSize / 2) * 4
+
+        local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+
+        if groundPosition then
+            local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+            if material == Enum.Material.Grass then
+                NatureService.createTree(groundPosition)
+            end
+        end
+
+        if i % 100 == 0 then
+            task.wait()
+        end
     end
     print("Tree generation complete.")
 end
@@ -194,28 +245,117 @@ function NatureService.generateRivers(heightMap, xSize, zSize)
 end
 
 function NatureService.createTree(position)
+    local treeType = math.random(1, 10)
+
+    if treeType <= 3 then -- 30% chance of a bush
+        NatureService.createBush(position)
+    else -- 70% chance of a regular tree
+        NatureService.createRegularTree(position)
+    end
+end
+
+function NatureService.createBush(position)
+    local bush = Instance.new("Model")
+    bush.Name = "Bush"
+    bush.Parent = workspace
+
+    local leaves = Instance.new("Part")
+    leaves.Name = "Leaves"
+    leaves.Parent = bush
+    leaves.Shape = Enum.PartType.Ball
+    leaves.Size = Vector3.new(math.random(4, 8), math.random(4, 8), math.random(4, 8))
+    leaves.Position = position + Vector3.new(0, leaves.Size.Y / 2, 0)
+    leaves.Color = Color3.fromRGB(34, 139, 34)
+    leaves.Anchored = true
+
+    bush.PrimaryPart = leaves
+    return bush
+end
+
+function NatureService.createRegularTree(position)
     local tree = Instance.new("Model")
     tree.Name = "Tree"
     tree.Parent = workspace
 
+    local trunkHeight = math.random(12, 25)
+    local trunkRadius = math.random(1, 3)
+
     local trunk = Instance.new("Part")
     trunk.Name = "Trunk"
     trunk.Parent = tree
-    trunk.Size = Vector3.new(2, 10, 2)
+    trunk.Shape = Enum.PartType.Cylinder
+    trunk.Size = Vector3.new(trunkRadius * 2, trunkHeight, trunkRadius * 2)
     trunk.Position = position + Vector3.new(0, trunk.Size.Y / 2, 0)
-    trunk.Color = Color3.fromRGB(87, 56, 34) -- Brown
+    trunk.Color = Color3.fromRGB(87, 56, 34)
     trunk.Anchored = true
 
-    local leaves = Instance.new("Part")
-    leaves.Name = "Leaves"
-    leaves.Parent = tree
-    leaves.Size = Vector3.new(8, 6, 8)
-    leaves.Position = trunk.Position + Vector3.new(0, trunk.Size.Y / 2, 0)
-    leaves.Color = Color3.fromRGB(34, 139, 34) -- Forest Green
-    leaves.Anchored = true
+    local function createBranch(parent, level, position, direction)
+        if level > 5 then
+            return
+        end
+
+        local branchLength = trunkHeight / level * math.random(0.8, 1.2)
+        local branchRadius = trunkRadius / level * math.random(0.8, 1.2)
+
+        local branch = Instance.new("Part")
+        branch.Name = "Branch"
+        branch.Parent = parent
+        branch.Shape = Enum.PartType.Cylinder
+        branch.Size = Vector3.new(branchRadius * 2, branchLength, branchRadius * 2)
+        branch.CFrame = CFrame.new(position, position + direction) * CFrame.Angles(math.rad(90), 0, 0)
+        branch.Color = Color3.fromRGB(87, 56, 34)
+        branch.Anchored = true
+
+        local endPosition = position + direction * branchLength
+
+        if level < 3 then
+            local numBranches = math.random(2, 4)
+            for i = 1, numBranches do
+                local newDirection = (direction + Vector3.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1))).Unit
+                createBranch(parent, level + 1, endPosition, newDirection)
+            end
+        else
+            local leaves = Instance.new("Part")
+            leaves.Name = "Leaves"
+            leaves.Parent = parent
+            leaves.Shape = Enum.PartType.Ball
+            leaves.Size = Vector3.new(math.random(8, 12), math.random(8, 12), math.random(8, 12))
+            leaves.Position = endPosition
+            leaves.Color = Color3.fromRGB(34, 139, 34)
+            leaves.Anchored = true
+        end
+    end
+
+    createBranch(tree, 1, trunk.Position + Vector3.new(0, trunkHeight / 2, 0), Vector3.new(0, 1, 0))
 
     tree.PrimaryPart = trunk
     return tree
+end
+
+function NatureService.createFlower(position)
+    local flower = Instance.new("Model")
+    flower.Name = "Flower"
+    flower.Parent = workspace
+
+    local stem = Instance.new("Part")
+    stem.Name = "Stem"
+    stem.Parent = flower
+    stem.Size = Vector3.new(0.2, 1, 0.2)
+    stem.Position = position + Vector3.new(0, 0.5, 0)
+    stem.Color = Color3.fromRGB(0, 100, 0)
+    stem.Anchored = true
+
+    local petal = Instance.new("Part")
+    petal.Name = "Petal"
+    petal.Parent = flower
+    petal.Shape = Enum.PartType.Ball
+    petal.Size = Vector3.new(1, 1, 1)
+    petal.Position = stem.Position + Vector3.new(0, 0.5, 0)
+    petal.Color = Color3.fromHSV(math.random(), 1, 1)
+    petal.Anchored = true
+
+    flower.PrimaryPart = stem
+    return flower
 end
 
 return NatureService

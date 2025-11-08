@@ -66,13 +66,26 @@ end
 
 function NPCService.spawnNPC()
     print("Attempting to spawn an NPC...")
-    local x = math.random(-1024, 1024)
-    local z = math.random(-1024, 1024)
-    print("Generated coordinates: " .. x .. ", " .. z)
 
-    local groundPosition = WorldUtil.getGroundPosition(x, z)
+    local groundPosition
+    local material
+    local attempts = 0
 
-    if groundPosition then
+    repeat
+        local x = math.random(-1024, 1024)
+        local z = math.random(-1024, 1024)
+
+        groundPosition = WorldUtil.getGroundPosition(x, z)
+
+        if groundPosition then
+            material = WorldUtil.getMaterialAtPosition(groundPosition)
+        end
+
+        attempts = attempts + 1
+
+    until (groundPosition and material ~= Enum.Material.Water) or attempts > 50
+
+    if groundPosition and material ~= Enum.Material.Water then
         print("Ground found at: " .. tostring(groundPosition))
         local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
 
@@ -82,7 +95,7 @@ function NPCService.spawnNPC()
 
         print("NPC spawned successfully at: " .. tostring(spawnPosition))
     else
-        print("Failed to find ground for NPC at: " .. x .. ", " .. z)
+        print("Failed to find a valid ground position for NPC after 50 attempts.")
     end
 end
 

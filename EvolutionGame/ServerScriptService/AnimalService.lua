@@ -4,9 +4,9 @@ local WanderAI = require(ReplicatedStorage.WanderAI)
 
 local AnimalService = {}
 
-function AnimalService.createAnimal(spawnPosition)
+function AnimalService.createLandAnimal(spawnPosition)
     local animal = Instance.new("Model")
-    animal.Name = "Animal"
+    animal.Name = "LandAnimal"
 
     local torso = Instance.new("Part")
     torso.Name = "Torso"
@@ -55,32 +55,84 @@ function AnimalService.createAnimal(spawnPosition)
     return animal
 end
 
+function AnimalService.createWaterAnimal(spawnPosition)
+    local animal = Instance.new("Model")
+    animal.Name = "WaterAnimal"
+
+    local torso = Instance.new("Part")
+    torso.Name = "Torso"
+    torso.Size = Vector3.new(2, 3, 5)
+    torso.Color = Color3.fromRGB(0, 100, 200) -- Blue
+    torso.Parent = animal
+
+    local tail = Instance.new("Part")
+    tail.Name = "Tail"
+    tail.Size = Vector3.new(1, 1, 3)
+    tail.Position = Vector3.new(0, 0, 4)
+    tail.Color = Color3.fromRGB(0, 80, 180)
+    tail.Parent = animal
+    local weldTail = Instance.new("WeldConstraint")
+    weldTail.Part0 = torso
+    weldTail.Part1 = tail
+    weldTail.Parent = torso
+
+    animal.PrimaryPart = torso
+    animal:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+
+    return animal
+end
+
 function AnimalService.spawnAnimal()
-    print("Attempting to spawn an animal...")
-    local x = math.random(-1024, 1024)
-    local z = math.random(-1024, 1024)
-    print("Generated coordinates: " .. x .. ", " .. z)
+    local animalType = math.random(1, 2)
+    local maxAttempts = 50
+    local attempts = 0
+    local positionFound = false
+    local groundPosition, material
 
-    local groundPosition = WorldUtil.getGroundPosition(x, z)
+    print("Attempting to spawn a ".. (animalType == 1 and "Land" or "Water") .." animal...")
 
-    if groundPosition then
-        print("Ground found at: " .. tostring(groundPosition))
-        local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
+    while not positionFound and attempts < maxAttempts do
+        local x = math.random(-1024, 1024)
+        local z = math.random(-1024, 1024)
 
-        local animal = AnimalService.createAnimal(spawnPosition)
-        animal.Parent = workspace
-        WanderAI.startWandering(animal)
+        groundPosition = WorldUtil.getGroundPosition(x, z)
 
-        print("Animal spawned successfully at: " .. tostring(spawnPosition))
+        if groundPosition then
+            material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+            if animalType == 1 and material ~= Enum.Material.Water then
+                positionFound = true
+            elseif animalType == 2 and material == Enum.Material.Water then
+                positionFound = true
+            end
+        end
+        attempts = attempts + 1
+    end
+
+    if positionFound then
+        if animalType == 1 then
+            local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
+            local animal = AnimalService.createLandAnimal(spawnPosition)
+            animal.Parent = workspace
+            WanderAI.startWandering(animal)
+            print("Land animal spawned successfully at: " .. tostring(spawnPosition))
+        else
+            local waterDepth = 0
+            local waterPosition = Vector3.new(groundPosition.X, waterDepth, groundPosition.Z)
+            local animal = AnimalService.createWaterAnimal(waterPosition)
+            animal.Parent = workspace
+            -- NOTE: Water animals do not yet have AI
+            print("Water animal spawned successfully at: " .. tostring(waterPosition))
+        end
     else
-        print("Failed to find ground for animal at: " .. x .. ", " .. z)
+        print("Failed to find a valid location for animal after " .. maxAttempts .. " attempts.")
     end
 end
 
 function AnimalService.start()
     print("AnimalService started")
-    -- Spawn a few animals to start
-    for _ = 1, 10 do
+    -- Spawn a mix of animals to start
+    for _ = 1, 20 do
         AnimalService.spawnAnimal()
     end
 end
