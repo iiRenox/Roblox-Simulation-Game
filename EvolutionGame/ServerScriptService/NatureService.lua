@@ -164,11 +164,11 @@ function NatureService.generateTrees(xSize, zSize, seed)
         end
     end
     task.wait()
+    end
 end
 
 function NatureService.start()
     print("NatureService started")
-
     local onFinished = Instance.new("BindableEvent")
 
     coroutine.wrap(function()
@@ -312,8 +312,11 @@ function NatureService.createRegularTree(position)
         if level < 3 then
             local numBranches = math.random(2, 4)
             for i = 1, numBranches do
-                local newDirection = (direction + Vector3.new(math.random(-1, 1), math.random(-1, 1), math.random(-1, 1))).Unit
-                createBranch(parent, level + 1, endPosition, newDirection)
+                local randomOffset = Vector3.new(math.random(-10, 10) / 10, math.random(-10, 10) / 10, math.random(-10, 10) / 10)
+                if (direction + randomOffset).Magnitude > 0 then
+                    local newDirection = (direction + randomOffset).Unit
+                    createBranch(parent, level + 1, endPosition, newDirection)
+                end
             end
         else
             local leaves = Instance.new("Part")
