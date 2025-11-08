@@ -13,11 +13,12 @@ function NatureService.generateWorld()
     local baseHeight = -20
 
     -- Noise parameters for multiple layers
-    local continentSmothness = 400
-    local continentMultiplier = 100
+    local continentSmothness = 500
+    local continentMultiplier = 150
 
-    local mountainSmothness = 150
-    local mountainMultiplier = 60
+    local mountainSmothness = 100
+    local mountainMultiplier = 200
+    local mountainPower = 1.5
 
     local detailSmothness = 20
     local detailMultiplier = 10
@@ -27,6 +28,12 @@ function NatureService.generateWorld()
     local craggyMultiplier = 25
     local cragginessMaskSmothness = 100
     local cragginessMaskThreshold = 0.6
+
+    -- Noise parameters for foliage
+    local foliageSmothness = 50
+    local foliageThreshold = 0.5
+    local flowerSmothness = 20
+    local flowerThreshold = 0.7
 
     -- Create a height map to store the terrain data before rendering
     local heightMap = {}
@@ -41,7 +48,7 @@ function NatureService.generateWorld()
 
             -- Calculate each noise layer
             local continentNoise = (math.noise(worldX / continentSmothness, worldZ / continentSmothness, seed)) * continentMultiplier
-            local mountainNoise = (math.noise(worldX / mountainSmothness, worldZ / mountainSmothness, seed + 1)) * mountainMultiplier
+            local mountainNoise = math.pow(math.abs(math.noise(worldX / mountainSmothness, worldZ / mountainSmothness, seed + 1)), mountainPower) * mountainMultiplier
             local detailNoise = (math.noise(worldX / detailSmothness, worldZ / detailSmothness, seed + 2)) * detailMultiplier
 
             -- Calculate craggy noise and a mask to control where it appears
@@ -80,12 +87,14 @@ function NatureService.generateWorld()
 
             -- Determine the material based on the height to create biomes
             local material
-            if y > 100 then
+            if y > 180 then
                 material = Enum.Material.Snow
-            elseif y > 50 then
+            elseif y > 90 then
                 material = Enum.Material.Rock
-            elseif y > 0 then
+            elseif y > 5 then
                 material = Enum.Material.Grass
+            elseif y > 0 then
+                material = Enum.Material.Sand -- Beach biome
             else
                 material = Enum.Material.Water
             end
@@ -106,63 +115,55 @@ function NatureService.generateWorld()
     end
     print("World generation complete.")
 
-    NatureService.generateTrees(xSize, zSize)
-    NatureService.generateFlowers(xSize, zSize)
+    NatureService.generateTrees(xSize, zSize, seed)
+    NatureService.generateFlowers(xSize, zSize, seed)
 end
 
-function NatureService.generateFlowers(xSize, zSize)
-    local flowerDensity = 0.8
-    local numFlowers = math.floor(xSize * zSize * flowerDensity)
+function NatureService.generateFlowers(xSize, zSize, seed)
+    for x = 1, xSize, 4 do
+        for z = 1, zSize, 4 do
+            local worldX = (x - xSize / 2) * 4
+            local worldZ = (z - zSize / 2) * 4
 
-    for i = 1, numFlowers do
-        local x = math.random(1, xSize)
-        local z = math.random(1, zSize)
+            local flowerNoise = (math.noise(worldX / flowerSmothness, worldZ / flowerSmothness, seed + 6) + 1) / 2
 
-        local worldX = (x - xSize / 2) * 4
+            if flowerNoise > flowerThreshold then
+                local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+
+                if groundPosition then
+                    local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+                    if material == Enum.Material.Grass then
+                        NatureService.createFlower(groundPosition)
+                    end
+                end
+            end
+        end
+        task.wait()
+    end
+end
+
+function NatureService.generateTrees(xSize, zSize, seed)
+    for x = 1, xSize, 8 do
+        for z = 1, zSize, 8 do
+            local worldX = (x - xSize / 2) * 4
         local worldZ = (z - zSize / 2) * 4
 
         local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
 
         if groundPosition then
-            local material = WorldUtil.getMaterialAtPosition(groundPosition)
+            local foliageNoise = (math.noise(worldX / foliageSmothness, worldZ / foliageSmothness, seed + 5) + 1) / 2
 
-            if material == Enum.Material.Grass then
-                NatureService.createFlower(groundPosition)
+            if foliageNoise > foliageThreshold then
+                local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+                if material == Enum.Material.Grass then
+                    NatureService.createTree(groundPosition)
+                end
             end
         end
-
-        if i % 200 == 0 then
-            task.wait()
-        end
     end
-end
-
-function NatureService.generateTrees(xSize, zSize)
-    local treeDensity = 0.4
-    local numTrees = math.floor(xSize * zSize * treeDensity)
-
-    for i = 1, numTrees do
-        local x = math.random(1, xSize)
-        local z = math.random(1, zSize)
-
-        local worldX = (x - xSize / 2) * 4
-        local worldZ = (z - zSize / 2) * 4
-
-        local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
-
-        if groundPosition then
-            local material = WorldUtil.getMaterialAtPosition(groundPosition)
-
-            if material == Enum.Material.Grass then
-                NatureService.createTree(groundPosition)
-            end
-        end
-
-        if i % 100 == 0 then
-            task.wait()
-        end
-    end
-    print("Tree generation complete.")
+    task.wait()
 end
 
 function NatureService.start()

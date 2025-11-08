@@ -24,16 +24,29 @@ function LightingService.setup()
     -- Sky
     local sky = Instance.new("Sky")
     sky.Parent = lighting
-    sky.SkyboxAsphalt = true
-    sky.SkyboxUp = true
-    sky.SkyboxBk = true
-    sky.SkyboxDn = true
-    sky.SkyboxFt = true
-    sky.SkyboxLf = true
-    sky.SkyboxRt = true
     sky.SunAngularSize = 10
-    sky.SunTextureId = "rbxassetid://123456789" -- Placeholder, will be replaced with a suitable texture
-    sky.MoonTextureId = "rbxassetid://987654321" -- Placeholder
+    -- NOTE: Using a procedural sky for now, so no skybox textures are needed.
+    -- sky.SunTextureId = "rbxassetid://..."
+    -- sky.MoonTextureId = "rbxassetid://..."
+
+    -- Post-processing effects for a more vibrant look
+    local bloom = Instance.new("BloomEffect")
+    bloom.Parent = lighting
+    bloom.Intensity = 0.2
+    bloom.Size = 24
+    bloom.Threshold = 0.8
+
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Parent = lighting
+    colorCorrection.TintColor = Color3.fromRGB(255, 245, 235)
+    colorCorrection.Brightness = 0.1
+    colorCorrection.Contrast = 0.15
+    colorCorrection.Saturation = 0.1
+
+    local sunRays = Instance.new("SunRaysEffect")
+    sunRays.Parent = lighting
+    sunRays.Intensity = 0.1
+    sunRays.Spread = 0.5
 
     -- Day/night cycle
     lighting.ClockTime = 14 -- Afternoon
