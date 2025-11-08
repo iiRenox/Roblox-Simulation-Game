@@ -32,7 +32,9 @@ function TimeService.start()
     print("TimeService started")
 
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local changeSpeedEvent = ReplicatedStorage:WaitForChild("ChangeSpeedEvent")
+    local changeSpeedEvent = Instance.new("RemoteEvent")
+    changeSpeedEvent.Name = "ChangeSpeedEvent"
+    changeSpeedEvent.Parent = ReplicatedStorage
 
     changeSpeedEvent.OnServerEvent:Connect(function(player)
         TimeService.changeSpeed()

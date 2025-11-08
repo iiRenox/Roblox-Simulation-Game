@@ -10,9 +10,7 @@ local screenGui = script.Parent
 local speedButton = Instance.new("TextButton")
 
 -- RemoteEvent for communication
-local changeSpeedEvent = Instance.new("RemoteEvent")
-changeSpeedEvent.Name = "ChangeSpeedEvent"
-changeSpeedEvent.Parent = ReplicatedStorage
+local changeSpeedEvent = ReplicatedStorage:WaitForChild("ChangeSpeedEvent")
 
 function setupUI()
     speedButton.Name = "SpeedButton"
