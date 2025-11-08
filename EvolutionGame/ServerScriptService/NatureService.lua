@@ -277,59 +277,102 @@ function NatureService.createRegularTree(position)
     tree.Name = "Tree"
     tree.Parent = workspace
 
-    local trunkHeight = math.random(12, 25)
-    local trunkRadius = math.random(1, 3)
+    -- Generation Parameters based on user's script, with added variation
+    local MAX_ITERATIONS = math.random(4, 6)
+    local BASE_ANGLE = 45
+    local woodColor = Color3.fromRGB(87, 56, 34)
+    local leafColor = Color3.fromRGB(34, 139, 34)
+    local trunkHeight = math.random(25, 40)
+    local trunkRadius = trunkHeight / 12
 
+    -- Create the main trunk
     local trunk = Instance.new("Part")
     trunk.Name = "Trunk"
-    trunk.Parent = tree
     trunk.Shape = Enum.PartType.Cylinder
     trunk.Size = Vector3.new(trunkRadius * 2, trunkHeight, trunkRadius * 2)
-    trunk.Position = position + Vector3.new(0, trunk.Size.Y / 2, 0)
-    trunk.Color = Color3.fromRGB(87, 56, 34)
+    trunk.Position = position + Vector3.new(0, trunkHeight / 2, 0)
+    trunk.Color = woodColor
+    trunk.Material = Enum.Material.Wood
     trunk.Anchored = true
+    trunk.TopSurface = Enum.SurfaceType.Smooth
+    trunk.BottomSurface = Enum.SurfaceType.Smooth
+    trunk.Parent = tree
 
-    local function createBranch(parent, level, position, direction)
-        if level > 5 then
+    -- This "root" part acts as the starting point for the recursive generation.
+    -- It's a horizontal block from which other branches will sprout.
+    local rootBranch = Instance.new("Part")
+    rootBranch.Name = "RootBranch"
+    rootBranch.Shape = Enum.PartType.Block
+    rootBranch.Size = Vector3.new(trunkHeight * 0.6, trunkRadius, trunkRadius)
+    rootBranch.PivotOffset = CFrame.new(-rootBranch.Size.X / 2, 0, 0)
+    rootBranch:PivotTo(CFrame.new(position + Vector3.new(0, trunkHeight, 0)))
+    rootBranch.Parent = tree -- Parent it to the model
+
+    -- Recursive function to generate the tree structure
+    local function generateBranch(parentBranch, iter)
+        local pivot = parentBranch:GetPivot()
+        -- The origin is at the end of the parent branch (along its X-axis)
+        local origin = CFrame.new(Vector3.xAxis * parentBranch.Size.X)
+
+        if iter > MAX_ITERATIONS then
+            -- Base case: create a leaf at the end of the branch
+            local leaf = Instance.new("Part")
+            leaf.Name = "Leaf"
+            leaf.Shape = Enum.PartType.Ball
+            leaf.Size = Vector3.new(1, 1, 1) * math.random(8, 12)
+            leaf.Color = leafColor
+            leaf.Material = Enum.Material.LeafyGrass
+            leaf.Anchored = true
+            leaf:PivotTo(pivot * origin)
+            leaf.Parent = tree
             return
         end
 
-        local branchLength = trunkHeight / level * math.random(0.8, 1.2)
-        local branchRadius = trunkRadius / level * math.random(0.8, 1.2)
+        local progress = iter / MAX_ITERATIONS
+        local baseAngle = math.lerp(0, BASE_ANGLE, progress)
+        local variation = 25 * (1 - progress * 0.7)
+        local droopAngle = baseAngle + math.random(-variation, variation)
+        -- Randomly orient the new branch around the parent
+        local rotation = CFrame.Angles(
+            math.random() * 2 * math.pi,
+            math.rad(droopAngle),
+            0
+        )
 
-        local branch = Instance.new("Part")
-        branch.Name = "Branch"
-        branch.Parent = parent
-        branch.Shape = Enum.PartType.Cylinder
-        branch.Size = Vector3.new(branchRadius * 2, branchLength, branchRadius * 2)
-        branch.CFrame = CFrame.new(position, position + direction) * CFrame.Angles(math.rad(90), 0, 0)
-        branch.Color = Color3.fromRGB(87, 56, 34)
-        branch.Anchored = true
+        -- Create the new branch part
+        local newBranch = Instance.new("Part")
+        newBranch.Name = "Branch"
+        newBranch.Shape = Enum.PartType.Block
+        newBranch.Color = woodColor
+        newBranch.Material = Enum.Material.Wood
+        newBranch.Anchored = true
 
-        local endPosition = position + direction * branchLength
+        local newWidth = parentBranch.Size.Y * math.random(60, 80) / 100
+        local newLength = parentBranch.Size.X * math.random(80, 95) / 100
+        newBranch.Size = Vector3.new(newLength, newWidth, newWidth)
+        -- Set the pivot to the base of the branch so it rotates correctly
+        newBranch.PivotOffset = CFrame.new(-newLength / 2, 0, 0)
 
-        if level < 3 then
-            local numBranches = math.random(2, 4)
-            for i = 1, numBranches do
-                local randomOffset = Vector3.new(math.random(-10, 10) / 10, math.random(-10, 10) / 10, math.random(-10, 10) / 10)
-                if (direction + randomOffset).Magnitude > 0 then
-                    local newDirection = (direction + randomOffset).Unit
-                    createBranch(parent, level + 1, endPosition, newDirection)
-                end
-            end
-        else
-            local leaves = Instance.new("Part")
-            leaves.Name = "Leaves"
-            leaves.Parent = parent
-            leaves.Shape = Enum.PartType.Ball
-            leaves.Size = Vector3.new(math.random(8, 12), math.random(8, 12), math.random(8, 12))
-            leaves.Position = endPosition
-            leaves.Color = Color3.fromRGB(34, 139, 34)
-            leaves.Anchored = true
+        -- Position and orient the new branch at the end of the parent
+        newBranch:PivotTo(pivot * origin * rotation)
+        newBranch.Parent = tree
+
+        -- Continue growing the main branch
+        generateBranch(newBranch, iter + 1)
+
+        -- Probabilistically create side branches
+        local chance = math.max(0.1, 1.2 - progress * 0.8)
+        while math.random() < chance do
+            generateBranch(newBranch, iter + 1)
+            chance *= 0.6 -- Decrease the chance for each additional side branch
         end
     end
 
-    createBranch(tree, 1, trunk.Position + Vector3.new(0, trunkHeight / 2, 0), Vector3.new(0, 1, 0))
+    -- Start the generation from the initial "root" branch
+    generateBranch(rootBranch, 0)
+
+    -- The initial horizontal rootBranch is just for generation, destroy it after
+    rootBranch:Destroy()
 
     tree.PrimaryPart = trunk
     return tree
