@@ -7,6 +7,12 @@ local natureFolder -- This will hold all the generated nature models
 -- Noise parameters for foliage
 local foliageSmothness = 50
 local foliageThreshold = 0.5
+
+-- Forest biome noise parameters
+local forestNoiseSmothness = 200 -- Large scale noise for biome definition
+local forestThreshold = 0.6 -- Defines dense forest areas
+local patchThreshold = 0.4 -- Defines sparse patch areas
+
 local flowerSmothness = 20
 local flowerThreshold = 0.7
 
@@ -117,7 +123,32 @@ function NatureService.generateWorld()
     print("World generation complete.")
 
     NatureService.generateTrees(xSize, zSize, seed)
+    NatureService.generateBushes(xSize, zSize, seed)
     NatureService.generateFlowers(xSize, zSize, seed)
+end
+
+function NatureService.generateBushes(xSize, zSize, seed)
+    for x = 1, xSize, 6 do
+        for z = 1, zSize, 6 do
+            local worldX = (x - xSize / 2) * 4
+            local worldZ = (z - zSize / 2) * 4
+
+            local bushNoise = (math.noise(worldX / 40, worldZ / 40, seed + 7) + 1) / 2
+
+            if bushNoise > 0.6 then
+                local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+
+                if groundPosition then
+                    local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+                    if material == Enum.Material.Grass then
+                        NatureService.createBush(groundPosition)
+                    end
+                end
+            end
+        end
+        task.wait()
+    end
 end
 
 function NatureService.generateFlowers(xSize, zSize, seed)
@@ -145,26 +176,52 @@ function NatureService.generateFlowers(xSize, zSize, seed)
 end
 
 function NatureService.generateTrees(xSize, zSize, seed)
-    for x = 1, xSize, 8 do
-        for z = 1, zSize, 8 do
+    local clusterStep = 32 -- How far apart to check for potential cluster centers
+    for x = 1, xSize, clusterStep do
+        for z = 1, zSize, clusterStep do
             local worldX = (x - xSize / 2) * 4
-        local worldZ = (z - zSize / 2) * 4
+            local worldZ = (z - zSize / 2) * 4
 
-        local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+            -- Determine the biome type using the forest noise map
+            local forestNoise = (math.noise(worldX / forestNoiseSmothness, worldZ / forestNoiseSmothness, seed + 8) + 1) / 2
 
-        if groundPosition then
-            local foliageNoise = (math.noise(worldX / foliageSmothness, worldZ / foliageSmothness, seed + 5) + 1) / 2
+            if forestNoise > forestThreshold then
+                -- DENSE FOREST: Spawn a large cluster of 10-25 trees
+                local numTrees = math.random(10, 25)
+                for i = 1, numTrees do
+                    local offsetX = math.random(-64, 64)
+                    local offsetZ = math.random(-64, 64)
+                    local treeX = worldX + offsetX
+                    local treeZ = worldZ + offsetZ
 
-            if foliageNoise > foliageThreshold then
-                local material = WorldUtil.getMaterialAtPosition(groundPosition)
+                    local groundPosition = WorldUtil.getGroundPosition(treeX, treeZ)
+                    if groundPosition then
+                        local material = WorldUtil.getMaterialAtPosition(groundPosition)
+                        if material == Enum.Material.Grass then
+                            NatureService.createTree(groundPosition)
+                        end
+                    end
+                end
+            elseif forestNoise > patchThreshold then
+                -- SPARSE PATCH: Spawn a small cluster of 2-4 trees
+                local numTrees = math.random(2, 4)
+                for i = 1, numTrees do
+                    local offsetX = math.random(-32, 32)
+                    local offsetZ = math.random(-32, 32)
+                    local treeX = worldX + offsetX
+                    local treeZ = worldZ + offsetZ
 
-                if material == Enum.Material.Grass then
-                    NatureService.createTree(groundPosition)
+                    local groundPosition = WorldUtil.getGroundPosition(treeX, treeZ)
+                    if groundPosition then
+                        local material = WorldUtil.getMaterialAtPosition(groundPosition)
+                        if material == Enum.Material.Grass then
+                            NatureService.createTree(groundPosition)
+                        end
+                    end
                 end
             end
         end
-    end
-    task.wait()
+        task.wait()
     end
 end
 
@@ -252,13 +309,7 @@ function NatureService.generateRivers(heightMap, xSize, zSize)
 end
 
 function NatureService.createTree(position)
-    local treeType = math.random(1, 10)
-
-    if treeType <= 3 then -- 30% chance of a bush
-        NatureService.createBush(position)
-    else -- 70% chance of a regular tree
-        NatureService.createRegularTree(position)
-    end
+    NatureService.createRegularTree(position)
 end
 
 function NatureService.createBush(position)
