@@ -50,13 +50,12 @@ function LightingService.setup()
 
     -- Day/night cycle
     lighting.ClockTime = 14 -- Afternoon
-    local dayNightCycle = Instance.new("Script")
-    dayNightCycle.Parent = lighting
-    dayNightCycle.Source = [[
-        while wait(1) do
-            game.Lighting.ClockTime = game.Lighting.ClockTime + 0.01
+
+    coroutine.wrap(function()
+        while task.wait(1) do
+            lighting.ClockTime = lighting.ClockTime + 0.01
         end
-    ]]
+    end)()
 end
 
 return LightingService
