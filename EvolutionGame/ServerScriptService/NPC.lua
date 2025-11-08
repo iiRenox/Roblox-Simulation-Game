@@ -9,8 +9,8 @@ local NPC = {}
 NPC.__index = NPC
 
 local npcGenomeTemplate = {
-    intelligence = 1,
-    strength = 5,
+    intelligence = { type = "number", defaultValue = 1, min = 1, max = 20 },
+    strength = { type = "number", defaultValue = 5, min = 2, max = 15 },
 }
 
 function NPC.new(model)
@@ -97,7 +97,8 @@ function NPC:breedWith(mate, spawnNPC)
     local newNPC = spawnNPC()
 
     if newNPC then
-        newNPC.genome = Genome.mutate(Genome.combine(self.genome, mate.genome), 0.1, 0.2)
+        local combinedGenome = Genome.combine(self.genome, mate.genome, npcGenomeTemplate)
+        newNPC.genome = Genome.mutate(combinedGenome, npcGenomeTemplate, 0.1)
         print("A new NPC has been born!")
     end
 

@@ -9,10 +9,16 @@ local Animal = {}
 Animal.__index = Animal
 
 local animalGenomeTemplate = {
-    speed = 20,
-    size = 5,
-    strength = 10,
-    dietType = "Herbivore", -- Herbivore, Carnivore
+    -- Physical Attributes
+    size = { type = "number", defaultValue = 5, min = 2, max = 15 },
+    speed = { type = "number", defaultValue = 20, min = 10, max = 40 },
+    -- Senses
+    eyesight = { type = "number", defaultValue = 100, min = 50, max = 200 },
+    smell = { type = "number", defaultValue = 150, min = 75, max = 250 },
+    -- Behavioral Genes
+    dietType = { type = "number", defaultValue = 0.1, min = 0, max = 1 }, -- 0=Herbivore, 1=Carnivore
+    sociality = { type = "string", defaultValue = "Solitary", possibleValues = {"Solitary", "Herd"} },
+    intelligence = { type = "number", defaultValue = 1, min = 1, max = 10 },
 }
 
 function Animal.new(model)
@@ -28,23 +34,33 @@ function Animal.new(model)
     return self
 end
 
-function Animal:findFood()
+function Animal:findFood(activeAnimals)
     -- NOTE: This is not a scalable solution. A spatial partitioning system (like a quadtree)
     -- would be needed to efficiently query for nearby entities in a large-scale simulation.
     local nearestFood = nil
     local minDistance = math.huge
+    local searchRadius = self.genome.eyesight -- Use eyesight for now
 
-    -- For now, herbivores will look for bushes
-    if self.genome.dietType == "Herbivore" then
+    if self.genome.dietType < 0.5 then -- Herbivore
         local natureFolder = workspace:FindFirstChild("Nature")
         if natureFolder then
             for _, child in ipairs(natureFolder:GetChildren()) do
                 if child.Name == "Bush" then
                     local distance = (self.model.PrimaryPart.Position - child.PrimaryPart.Position).Magnitude
-                    if distance < minDistance then
+                    if distance < minDistance and distance < searchRadius then
                         minDistance = distance
                         nearestFood = child
                     end
+                end
+            end
+        end
+    else -- Carnivore
+        for _, otherAnimal in ipairs(activeAnimals) do
+            if otherAnimal ~= self and otherAnimal.genome.dietType < 0.5 then -- Hunt herbivores
+                local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
+                if distance < minDistance and distance < searchRadius then
+                    minDistance = distance
+                    nearestFood = otherAnimal.model
                 end
             end
         end
@@ -67,12 +83,13 @@ function Animal:findMate(activeAnimals)
     -- would be needed to efficiently query for nearby entities in a large-scale simulation.
     local nearestMate = nil
     local minDistance = math.huge
+    local searchRadius = self.genome.smell -- Use smell for finding mates
 
     -- Find another animal of the same species (for now, any land animal)
     for _, otherAnimal in ipairs(activeAnimals) do
         if otherAnimal ~= self and otherAnimal.state == "Breeding" then
             local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
-            if distance < minDistance then
+            if distance < minDistance and distance < searchRadius then
                 minDistance = distance
                 nearestMate = otherAnimal
             end
@@ -88,7 +105,8 @@ function Animal:breedWith(mate, spawnAnimal)
     local newAnimal = spawnAnimal()
 
     if newAnimal then
-        newAnimal.genome = Genome.mutate(Genome.combine(self.genome, mate.genome), 0.1, 0.2)
+        local combinedGenome = Genome.combine(self.genome, mate.genome, animalGenomeTemplate)
+        newAnimal.genome = Genome.mutate(combinedGenome, animalGenomeTemplate, 0.1)
         print("A new animal has been born!")
     end
 
@@ -110,7 +128,7 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     end
 
     if self.state == "Foraging" then
-        local food = self:findFood()
+        local food = self:findFood(activeAnimals)
         if food then
             self.humanoid:MoveTo(food.PrimaryPart.Position)
             if (self.model.PrimaryPart.Position - food.PrimaryPart.Position).Magnitude < 10 then
@@ -131,10 +149,41 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
             end
         end
     elseif self.state == "Idle" then
-        if self.humanoid and math.random() < 0.1 then
-            self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+        if self.genome.sociality == "Herd" then
+            local ally = self:findNearestAlly(activeAnimals)
+            if ally then
+                -- Move towards the ally to form a herd
+                self.humanoid:MoveTo(ally.model.PrimaryPart.Position)
+            else
+                -- Wander if no allies are nearby
+                if self.humanoid and math.random() < 0.1 then
+                    self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+                end
+            end
+        else -- Solitary
+            if self.humanoid and math.random() < 0.1 then
+                self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+            end
         end
     end
+end
+
+function Animal:findNearestAlly(activeAnimals)
+    local nearestAlly = nil
+    local minDistance = math.huge
+    local searchRadius = self.genome.eyesight
+
+    for _, otherAnimal in ipairs(activeAnimals) do
+        if otherAnimal ~= self and otherAnimal.genome.sociality == "Herd" then
+            local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
+            if distance < minDistance and distance < searchRadius then
+                minDistance = distance
+                nearestAlly = otherAnimal
+            end
+        end
+    end
+
+    return nearestAlly
 end
 
 return Animal

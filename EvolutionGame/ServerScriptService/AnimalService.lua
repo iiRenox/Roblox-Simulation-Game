@@ -127,6 +127,10 @@ function AnimalService.spawnAnimal()
             local animalObject = Animal.new(animalModel)
             table.insert(activeAnimals, animalObject)
 
+            -- Apply genetic traits
+            animalModel:ScaleTo(animalObject.genome.size)
+            animalObject.humanoid.WalkSpeed = animalObject.genome.speed
+
             print("Land animal spawned successfully at: " .. tostring(spawnPosition))
             return animalObject
         else
