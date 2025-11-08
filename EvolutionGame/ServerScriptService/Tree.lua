@@ -40,6 +40,9 @@ function Tree.new(model)
     self.growthState = "Sapling" -- Sapling, Mature
     self.lastReproduction = 0
 
+    -- Start as a small sapling
+    self.model:ScaleTo(2)
+
     return self
 end
 

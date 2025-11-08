@@ -3,7 +3,9 @@
 -- Manages the state, needs, and behavior of a single animal.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Genome = require(ReplicatedStorage.Genome)
+local Pathfinding = require(ServerScriptService.Pathfinding)
 
 local Animal = {}
 Animal.__index = Animal
@@ -30,8 +32,26 @@ function Animal.new(model)
     self.age = 0
     self.hunger = 0
     self.state = "Idle" -- Idle, Foraging, Hunting, Breeding
+    self.isMoving = false
 
     return self
+end
+
+function Animal:moveTo(destination)
+    if self.isMoving then return end
+    self.isMoving = true
+
+    local path = Pathfinding.computePath(self.model.PrimaryPart.Position, destination)
+    Pathfinding.followPath(self.humanoid, path)
+
+    self.isMoving = false
+end
+
+function Animal:grow(deltaTime)
+    if self.model:GetScale() < self.genome.size then
+        local newScale = self.model:GetScale() + (self.genome.size / 20) * deltaTime -- Grow to full size in 20 seconds
+        self.model:ScaleTo(newScale)
+    end
 end
 
 function Animal:findFood(activeAnimals)
@@ -56,7 +76,7 @@ function Animal:findFood(activeAnimals)
         end
     else -- Carnivore
         for _, otherAnimal in ipairs(activeAnimals) do
-            if otherAnimal ~= self and otherAnimal.genome.dietType < 0.5 then -- Hunt herbivores
+            if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.genome.dietType < 0.5 then -- Hunt herbivores
                 local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
                 if distance < minDistance and distance < searchRadius then
                     minDistance = distance
@@ -87,7 +107,7 @@ function Animal:findMate(activeAnimals)
 
     -- Find another animal of the same species (for now, any land animal)
     for _, otherAnimal in ipairs(activeAnimals) do
-        if otherAnimal ~= self and otherAnimal.state == "Breeding" then
+        if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.state == "Breeding" then
             local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
             if distance < minDistance and distance < searchRadius then
                 minDistance = distance
@@ -118,6 +138,8 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     self.age = self.age + deltaTime
     self.hunger = self.hunger + deltaTime * 0.1
 
+    self:grow(deltaTime)
+
     -- State machine logic
     if self.hunger > 70 then
         self.state = "Foraging"
@@ -130,7 +152,7 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     if self.state == "Foraging" then
         local food = self:findFood(activeAnimals)
         if food then
-            self.humanoid:MoveTo(food.PrimaryPart.Position)
+            self:moveTo(food.PrimaryPart.Position)
             if (self.model.PrimaryPart.Position - food.PrimaryPart.Position).Magnitude < 10 then
                 self:eat(food)
             end
@@ -138,14 +160,14 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     elseif self.state == "Breeding" then
         local mate = self:findMate(activeAnimals)
         if mate then
-            self.humanoid:MoveTo(mate.model.PrimaryPart.Position)
+            self:moveTo(mate.model.PrimaryPart.Position)
             if (self.model.PrimaryPart.Position - mate.model.PrimaryPart.Position).Magnitude < 10 then
                 self:breedWith(mate, spawnAnimal)
             end
         else
             -- If no mate is available, just wander
-            if self.humanoid and math.random() < 0.1 then
-                self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+            if math.random() < 0.1 then
+                self:moveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
             end
         end
     elseif self.state == "Idle" then
@@ -153,16 +175,16 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
             local ally = self:findNearestAlly(activeAnimals)
             if ally then
                 -- Move towards the ally to form a herd
-                self.humanoid:MoveTo(ally.model.PrimaryPart.Position)
+                self:moveTo(ally.model.PrimaryPart.Position)
             else
                 -- Wander if no allies are nearby
-                if self.humanoid and math.random() < 0.1 then
-                    self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+                if math.random() < 0.1 then
+                    self:moveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
                 end
             end
         else -- Solitary
-            if self.humanoid and math.random() < 0.1 then
-                self.humanoid:MoveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
+            if math.random() < 0.1 then
+                self:moveTo(self.model.PrimaryPart.Position + Vector3.new(math.random(-100, 100), 0, math.random(-100, 100)))
             end
         end
     end
@@ -174,7 +196,7 @@ function Animal:findNearestAlly(activeAnimals)
     local searchRadius = self.genome.eyesight
 
     for _, otherAnimal in ipairs(activeAnimals) do
-        if otherAnimal ~= self and otherAnimal.genome.sociality == "Herd" then
+        if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.genome.sociality == "Herd" then
             local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
             if distance < minDistance and distance < searchRadius then
                 minDistance = distance

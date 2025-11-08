@@ -128,7 +128,7 @@ function AnimalService.spawnAnimal()
             table.insert(activeAnimals, animalObject)
 
             -- Apply genetic traits
-            animalModel:ScaleTo(animalObject.genome.size)
+            animalModel:ScaleTo(1) -- Start as an infant
             animalObject.humanoid.WalkSpeed = animalObject.genome.speed
 
             print("Land animal spawned successfully at: " .. tostring(spawnPosition))

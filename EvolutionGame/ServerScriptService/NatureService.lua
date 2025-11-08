@@ -461,9 +461,7 @@ function NatureService.createRegularTree(position)
     local treeObject = Tree.new(tree)
     table.insert(activeTrees, treeObject)
 
-    -- Scale the tree to a small sapling size
-    tree:ScaleTo(5)
-
+    -- The Tree class will handle the initial scaling
     return treeObject
 end
 

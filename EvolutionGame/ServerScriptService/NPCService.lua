@@ -1,3 +1,7 @@
+--!strict
+-- NPCService
+-- Manages the spawning and updating of all NPCs.
+
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,10 +12,7 @@ local TimeService = require(ServerScriptService.TimeService)
 local NPCService = {}
 
 local activeNPCs = {} -- Holds all the active NPC objects
-
-function NPCService.getActiveNPCs()
-    return activeNPCs
-end
+local tribe = {} -- A simple table to represent the first tribe
 
 function NPCService.createNPC(spawnPosition)
     local npc = Instance.new("Model")
@@ -103,6 +104,8 @@ function NPCService.spawnNPC()
 
         local npcObject = NPC.new(npcModel)
         table.insert(activeNPCs, npcObject)
+        table.insert(tribe, npcObject)
+        npcObject.tribe = tribe
 
         print("NPC spawned successfully at: " .. tostring(spawnPosition))
         return npcObject
@@ -113,15 +116,42 @@ end
 
 function NPCService.start()
     print("NPCService started")
-    -- Spawn a couple of NPCs to start
-    for _ = 1, 2 do
-        NPCService.spawnNPC()
-    end
+    -- Spawn the first two humans
+    NPCService.spawnNPC()
+    NPCService.spawnNPC()
 
     -- Connect to the game loop
-    TimeService.getTick():Connect(function(deltaTime)
+    TimeService.getTick():Connect(function(deltaTime, season)
         for _, npc in ipairs(activeNPCs) do
             npc:update(deltaTime, activeNPCs, NPCService.spawnNPC)
+
+            -- "Eureka!" moment
+            if npc.state == "Hunting" and math.random() < 0.01 then
+                if not npc.knowledge.toolBlueprints["SimpleSpear"] then
+                    npc.knowledge.toolBlueprints["SimpleSpear"] = true
+                    print("An NPC has discovered how to make a Simple Spear!")
+                end
+            end
+        end
+
+        -- Breeding logic
+        if season == "Spring" then
+            for _, npc in ipairs(tribe) do
+                if npc.state == "SeekingShelter" and #tribe < 10 then -- Limit tribe size for now
+                    for _, otherNpc in ipairs(tribe) do
+                        if npc ~= otherNpc and otherNpc.state == "SeekingShelter" then
+                            -- Simple breeding logic
+                            local newNpc = NPCService.spawnNPC()
+                            if newNpc then
+                                -- Knowledge is passed down
+                                newNpc.knowledge = npc.knowledge
+                                print("A new NPC has been born into the tribe!")
+                            end
+                            return -- Only one birth per spring for now
+                        end
+                    end
+                end
+            end
         end
     end)
 end
