@@ -226,9 +226,14 @@ function NatureService.start()
 
     -- Connect to the game loop
     TimeService.getTick():Connect(function(deltaTime, season)
-        for _, tree in ipairs(activeTrees) do
-            tree:grow(deltaTime)
-            if season == "Spring" then
+        -- Iterate backwards to safely remove dead trees
+        for i = #activeTrees, 1, -1 do
+            local tree = activeTrees[i]
+            local status = tree:grow(deltaTime)
+
+            if status == "dead" then
+                table.remove(activeTrees, i)
+            elseif season == "Spring" then
                 tree:reproduce()
             end
         end

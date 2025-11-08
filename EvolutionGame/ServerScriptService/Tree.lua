@@ -52,7 +52,7 @@ function Tree:grow(deltaTime)
     if self.age > self.genome.lifespan then
         self.model:Destroy()
         -- In the future, this would leave behind a dead tree model
-        return
+        return "dead"
     end
 
     if self.growthState == "Sapling" then
