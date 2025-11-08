@@ -1,8 +1,14 @@
+local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
+local Tree = require(ServerScriptService.Tree)
+local TimeService = require(ServerScriptService.TimeService)
+
 local NatureService = {}
 
 local natureFolder -- This will hold all the generated nature models
+local activeTrees = {} -- Holds all the active Tree objects
 
 -- Noise parameters for foliage
 local foliageSmothness = 50
@@ -176,52 +182,19 @@ function NatureService.generateFlowers(xSize, zSize, seed)
 end
 
 function NatureService.generateTrees(xSize, zSize, seed)
-    local clusterStep = 32 -- How far apart to check for potential cluster centers
-    for x = 1, xSize, clusterStep do
-        for z = 1, zSize, clusterStep do
-            local worldX = (x - xSize / 2) * 4
-            local worldZ = (z - zSize / 2) * 4
+    -- Spawn a few primordial saplings to start the simulation
+    local numPrimordialTrees = 15
+    for i = 1, numPrimordialTrees do
+        local worldX = math.random(-xSize * 2, xSize * 2)
+        local worldZ = math.random(-zSize * 2, zSize * 2)
 
-            -- Determine the biome type using the forest noise map
-            local forestNoise = (math.noise(worldX / forestNoiseSmothness, worldZ / forestNoiseSmothness, seed + 8) + 1) / 2
-
-            if forestNoise > forestThreshold then
-                -- DENSE FOREST: Spawn a large cluster of 10-25 trees
-                local numTrees = math.random(10, 25)
-                for i = 1, numTrees do
-                    local offsetX = math.random(-64, 64)
-                    local offsetZ = math.random(-64, 64)
-                    local treeX = worldX + offsetX
-                    local treeZ = worldZ + offsetZ
-
-                    local groundPosition = WorldUtil.getGroundPosition(treeX, treeZ)
-                    if groundPosition then
-                        local material = WorldUtil.getMaterialAtPosition(groundPosition)
-                        if material == Enum.Material.Grass then
-                            NatureService.createTree(groundPosition)
-                        end
-                    end
-                end
-            elseif forestNoise > patchThreshold then
-                -- SPARSE PATCH: Spawn a small cluster of 2-4 trees
-                local numTrees = math.random(2, 4)
-                for i = 1, numTrees do
-                    local offsetX = math.random(-32, 32)
-                    local offsetZ = math.random(-32, 32)
-                    local treeX = worldX + offsetX
-                    local treeZ = worldZ + offsetZ
-
-                    local groundPosition = WorldUtil.getGroundPosition(treeX, treeZ)
-                    if groundPosition then
-                        local material = WorldUtil.getMaterialAtPosition(groundPosition)
-                        if material == Enum.Material.Grass then
-                            NatureService.createTree(groundPosition)
-                        end
-                    end
-                end
+        local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+        if groundPosition then
+            local material = WorldUtil.getMaterialAtPosition(groundPosition)
+            if material == Enum.Material.Grass then
+                NatureService.createTree(groundPosition)
             end
         end
-        task.wait()
     end
 end
 
@@ -245,11 +218,21 @@ function NatureService.start()
         natureFolder.Name = "Nature"
         natureFolder.Parent = workspace
 
-        -- Generate the new terrain
+        -- Generate the new terrain and initial life
         NatureService.generateWorld()
 
         onFinished:Fire()
     end)()
+
+    -- Connect to the game loop
+    TimeService.getTick():Connect(function(deltaTime, season)
+        for _, tree in ipairs(activeTrees) do
+            tree:grow(deltaTime)
+            if season == "Spring" then
+                tree:reproduce()
+            end
+        end
+    end)
 
     return onFinished.Event
 end
@@ -473,7 +456,15 @@ function NatureService.createRegularTree(position)
     end
 
     tree.PrimaryPart = trunk
-    return tree
+
+    -- Create and register the Tree object
+    local treeObject = Tree.new(tree)
+    table.insert(activeTrees, treeObject)
+
+    -- Scale the tree to a small sapling size
+    tree:ScaleTo(5)
+
+    return treeObject
 end
 
 function NatureService.createFlower(position)

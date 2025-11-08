@@ -1,8 +1,17 @@
+local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
-local WanderAI = require(ReplicatedStorage.WanderAI)
+local NPC = require(ServerScriptService.NPC)
+local TimeService = require(ServerScriptService.TimeService)
 
 local NPCService = {}
+
+local activeNPCs = {} -- Holds all the active NPC objects
+
+function NPCService.getActiveNPCs()
+    return activeNPCs
+end
 
 function NPCService.createNPC(spawnPosition)
     local npc = Instance.new("Model")
@@ -89,11 +98,14 @@ function NPCService.spawnNPC()
         print("Ground found at: " .. tostring(groundPosition))
         local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
 
-        local npc = NPCService.createNPC(spawnPosition)
-        npc.Parent = workspace
-        WanderAI.startWandering(npc)
+        local npcModel = NPCService.createNPC(spawnPosition)
+        npcModel.Parent = workspace
+
+        local npcObject = NPC.new(npcModel)
+        table.insert(activeNPCs, npcObject)
 
         print("NPC spawned successfully at: " .. tostring(spawnPosition))
+        return npcObject
     else
         print("Failed to find a valid ground position for NPC after 50 attempts.")
     end
@@ -105,6 +117,13 @@ function NPCService.start()
     for _ = 1, 2 do
         NPCService.spawnNPC()
     end
+
+    -- Connect to the game loop
+    TimeService.getTick():Connect(function(deltaTime)
+        for _, npc in ipairs(activeNPCs) do
+            npc:update(deltaTime, activeNPCs, NPCService.spawnNPC)
+        end
+    end)
 end
 
 return NPCService

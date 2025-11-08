@@ -1,8 +1,17 @@
+local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
-local WanderAI = require(ReplicatedStorage.WanderAI)
+local Animal = require(ServerScriptService.Animal)
+local TimeService = require(ServerScriptService.TimeService)
 
 local AnimalService = {}
+
+local activeAnimals = {} -- Holds all the active Animal objects
+
+function AnimalService.getActiveAnimals()
+    return activeAnimals
+end
 
 function AnimalService.createLandAnimal(spawnPosition)
     local animal = Instance.new("Model")
@@ -112,10 +121,14 @@ function AnimalService.spawnAnimal()
     if positionFound then
         if animalType == 1 then
             local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
-            local animal = AnimalService.createLandAnimal(spawnPosition)
-            animal.Parent = workspace
-            WanderAI.startWandering(animal)
+            local animalModel = AnimalService.createLandAnimal(spawnPosition)
+            animalModel.Parent = workspace
+
+            local animalObject = Animal.new(animalModel)
+            table.insert(activeAnimals, animalObject)
+
             print("Land animal spawned successfully at: " .. tostring(spawnPosition))
+            return animalObject
         else
             local waterDepth = 0
             local waterPosition = Vector3.new(groundPosition.X, waterDepth, groundPosition.Z)
@@ -135,6 +148,13 @@ function AnimalService.start()
     for _ = 1, 20 do
         AnimalService.spawnAnimal()
     end
+
+    -- Connect to the game loop
+    TimeService.getTick():Connect(function(deltaTime)
+        for _, animal in ipairs(activeAnimals) do
+            animal:update(deltaTime, activeAnimals, AnimalService.spawnAnimal)
+        end
+    end)
 end
 
 return AnimalService

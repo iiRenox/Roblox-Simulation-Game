@@ -1,3 +1,6 @@
+local ServerScriptService = game:GetService("ServerScriptService")
+local TimeService = require(ServerScriptService.TimeService)
+
 local LightingService = {}
 
 function LightingService.setup()
@@ -48,14 +51,10 @@ function LightingService.setup()
     sunRays.Intensity = 0.1
     sunRays.Spread = 0.5
 
-    -- Day/night cycle
-    lighting.ClockTime = 14 -- Afternoon
-
-    coroutine.wrap(function()
-        while task.wait(1) do
-            lighting.ClockTime = lighting.ClockTime + 0.01
-        end
-    end)()
+    -- Day/night cycle is now driven by TimeService
+    TimeService.getTick():Connect(function(deltaTime, season)
+        lighting.ClockTime = lighting.ClockTime + deltaTime
+    end)
 end
 
 return LightingService
