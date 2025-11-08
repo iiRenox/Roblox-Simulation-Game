@@ -2,6 +2,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NatureService = {}
 
+-- Noise parameters for foliage
+local foliageSmothness = 50
+local foliageThreshold = 0.5
+local flowerSmothness = 20
+local flowerThreshold = 0.7
+
 function NatureService.generateWorld()
     print("Starting world generation...")
     local terrain = workspace.Terrain
@@ -29,15 +35,8 @@ function NatureService.generateWorld()
     local cragginessMaskSmothness = 100
     local cragginessMaskThreshold = 0.6
 
-    -- Noise parameters for foliage
-    local foliageSmothness = 50
-    local foliageThreshold = 0.5
-    local flowerSmothness = 20
-    local flowerThreshold = 0.7
-
     -- Create a height map to store the terrain data before rendering
     local heightMap = {}
-
     -- 1. Generate the base terrain heights and store them in the heightMap
     print("Generating height map...")
     for x = 1, xSize do
