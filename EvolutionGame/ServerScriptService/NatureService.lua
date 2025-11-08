@@ -2,6 +2,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NatureService = {}
 
+local natureFolder -- This will hold all the generated nature models
+
 -- Noise parameters for foliage
 local foliageSmothness = 50
 local foliageThreshold = 0.5
@@ -176,10 +178,15 @@ function NatureService.start()
 
         -- Destroy any old terrain parts from previous versions
         for _, child in ipairs(workspace:GetChildren()) do
-            if child.Name == "TerrainBlock" or child.Name == "Baseplate" then
+            if child.Name == "TerrainBlock" or child.Name == "Baseplate" or child.Name == "Nature" then
                 child:Destroy()
             end
         end
+
+        -- Create a new folder for nature models
+        natureFolder = Instance.new("Folder")
+        natureFolder.Name = "Nature"
+        natureFolder.Parent = workspace
 
         -- Generate the new terrain
         NatureService.generateWorld()
@@ -257,15 +264,29 @@ end
 function NatureService.createBush(position)
     local bush = Instance.new("Model")
     bush.Name = "Bush"
-    bush.Parent = workspace
+    bush.Parent = natureFolder
 
+    -- Create a small, dark stump
+    local stump = Instance.new("Part")
+    stump.Name = "Stump"
+    stump.Parent = bush
+    stump.Shape = Enum.PartType.Cylinder
+    stump.Size = Vector3.new(2, 1, 2)
+    stump.Position = position + Vector3.new(0, 0.5, 0)
+    stump.Color = Color3.fromRGB(87, 56, 34)
+    stump.Material = Enum.Material.Wood
+    stump.Anchored = true
+
+    -- Create the leafy part
     local leaves = Instance.new("Part")
     leaves.Name = "Leaves"
     leaves.Parent = bush
     leaves.Shape = Enum.PartType.Ball
-    leaves.Size = Vector3.new(math.random(4, 8), math.random(4, 8), math.random(4, 8))
-    leaves.Position = position + Vector3.new(0, leaves.Size.Y / 2, 0)
+    local leafSize = math.random(6, 10)
+    leaves.Size = Vector3.new(leafSize, leafSize, leafSize)
+    leaves.Position = position + Vector3.new(0, leafSize / 2, 0)
     leaves.Color = Color3.fromRGB(34, 139, 34)
+    leaves.Material = Enum.Material.LeafyGrass
     leaves.Anchored = true
 
     bush.PrimaryPart = leaves
@@ -275,7 +296,7 @@ end
 function NatureService.createRegularTree(position)
     local tree = Instance.new("Model")
     tree.Name = "Tree"
-    tree.Parent = workspace
+    tree.Parent = natureFolder
 
     -- Generation Parameters
     local MAX_ITERATIONS = math.random(4, 6)
@@ -285,18 +306,33 @@ function NatureService.createRegularTree(position)
     local trunkHeight = math.random(25, 40)
     local trunkRadius = trunkHeight / 12
 
-    -- Create the main trunk
-    local trunk = Instance.new("Part")
-    trunk.Name = "Trunk"
-    trunk.Shape = Enum.PartType.Cylinder
-    trunk.Size = Vector3.new(trunkRadius * 2, trunkHeight, trunkRadius * 2)
-    trunk.Position = position + Vector3.new(0, trunkHeight / 2, 0)
-    trunk.Color = woodColor
-    trunk.Material = Enum.Material.Wood
-    trunk.Anchored = true
-    trunk.TopSurface = Enum.SurfaceType.Smooth
-    trunk.BottomSurface = Enum.SurfaceType.Smooth
-    trunk.Parent = tree
+    -- Create a multi-part, organic trunk
+    local trunkParts = {}
+    local trunkCFrame = CFrame.new(position)
+    local segments = math.floor(trunkHeight / 4)
+    local trunkPart = nil
+
+    for i = 1, segments do
+        trunkPart = Instance.new("Part")
+        trunkPart.Name = "TrunkSegment"
+        trunkPart.Shape = Enum.PartType.Block
+        local segmentLength = trunkHeight / segments
+        local radius = trunkRadius * (1 - (i / (segments * 2))) -- Taper the trunk
+        trunkPart.Size = Vector3.new(radius * 2, segmentLength, radius * 2)
+        trunkPart.Color = woodColor
+        trunkPart.Material = Enum.Material.Wood
+        trunkPart.Anchored = true
+
+        -- Position the segment and apply a slight rotation for a natural look
+        trunkCFrame = trunkCFrame * CFrame.new(0, segmentLength / 2, 0)
+        local rotation = CFrame.Angles(math.rad(math.random(-10, 10)), math.rad(math.random(-10, 10)), math.rad(math.random(-10, 10)))
+        trunkPart.CFrame = trunkCFrame * rotation
+        trunkPart.Parent = tree
+        table.insert(trunkParts, trunkPart)
+
+        trunkCFrame = trunkCFrame * CFrame.new(0, segmentLength / 2, 0)
+    end
+    local trunk = trunkPart -- The last part is the top of the trunk
 
     -- Recursive function to generate the tree structure
     local function generateBranch(parentBranch, iter)
@@ -357,7 +393,7 @@ function NatureService.createRegularTree(position)
     end
 
     -- Create the initial main branches sprouting from the top of the trunk
-    local trunkTopCFrame = CFrame.new(position + Vector3.new(0, trunkHeight, 0))
+    local trunkTopCFrame = trunk.CFrame * CFrame.new(0, trunk.Size.Y / 2, 0)
     local numMainBranches = math.random(3, 5)
     for i = 1, numMainBranches do
         -- Create the first branch part
@@ -392,7 +428,7 @@ end
 function NatureService.createFlower(position)
     local flower = Instance.new("Model")
     flower.Name = "Flower"
-    flower.Parent = workspace
+    flower.Parent = natureFolder
 
     local stem = Instance.new("Part")
     stem.Name = "Stem"
