@@ -28,9 +28,6 @@ function NatureService.generateWorld()
     for x = 1, xSize do
         heightMap[x] = {}
         for z = 1, zSize do
-            if z % 50 == 0 then
-                task.wait()
-            end
             local worldX = x - xSize / 2
             local worldZ = z - zSize / 2
 
@@ -42,6 +39,7 @@ function NatureService.generateWorld()
             -- Combine the noise layers to get the final height
             heightMap[x][z] = continentNoise + mountainNoise + detailNoise
         end
+        task.wait()
     end
     print("Height map generation complete.")
 
@@ -54,9 +52,6 @@ function NatureService.generateWorld()
     print("Rendering terrain...")
     for x = 1, xSize do
         for z = 1, zSize do
-            if z % 50 == 0 then
-                task.wait()
-            end
             local y = heightMap[x][z]
             local worldX = x - xSize / 2
             local worldZ = z - zSize / 2
@@ -88,6 +83,7 @@ function NatureService.generateWorld()
                 terrain:FillBlock(cframe, size, material)
             end
         end
+        task.wait()
     end
     print("World generation complete.")
 
@@ -113,6 +109,7 @@ function NatureService.generateTrees(heightMap, xSize, zSize, baseHeight)
                 end
             end
         end
+        task.wait()
     end
     print("Tree generation complete.")
 end
