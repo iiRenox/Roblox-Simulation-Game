@@ -277,7 +277,7 @@ function NatureService.createRegularTree(position)
     tree.Name = "Tree"
     tree.Parent = workspace
 
-    -- Generation Parameters based on user's script, with added variation
+    -- Generation Parameters
     local MAX_ITERATIONS = math.random(4, 6)
     local BASE_ANGLE = 45
     local woodColor = Color3.fromRGB(87, 56, 34)
@@ -298,22 +298,8 @@ function NatureService.createRegularTree(position)
     trunk.BottomSurface = Enum.SurfaceType.Smooth
     trunk.Parent = tree
 
-    -- This "root" part acts as the starting point for the recursive generation.
-    -- It's a horizontal block from which other branches will sprout.
-    local rootBranch = Instance.new("Part")
-    rootBranch.Name = "RootBranch"
-    rootBranch.Shape = Enum.PartType.Block
-    rootBranch.Size = Vector3.new(trunkHeight * 0.6, trunkRadius, trunkRadius)
-    rootBranch.PivotOffset = CFrame.new(-rootBranch.Size.X / 2, 0, 0)
-    rootBranch:PivotTo(CFrame.new(position + Vector3.new(0, trunkHeight, 0)))
-    rootBranch.Parent = tree -- Parent it to the model
-
     -- Recursive function to generate the tree structure
     local function generateBranch(parentBranch, iter)
-        local pivot = parentBranch:GetPivot()
-        -- The origin is at the end of the parent branch (along its X-axis)
-        local origin = CFrame.new(Vector3.xAxis * parentBranch.Size.X)
-
         if iter > MAX_ITERATIONS then
             -- Base case: create a leaf at the end of the branch
             local leaf = Instance.new("Part")
@@ -323,13 +309,13 @@ function NatureService.createRegularTree(position)
             leaf.Color = leafColor
             leaf.Material = Enum.Material.LeafyGrass
             leaf.Anchored = true
-            leaf:PivotTo(pivot * origin)
+            leaf:PivotTo(parentBranch:GetPivot() * CFrame.new(parentBranch.Size.X, 0, 0))
             leaf.Parent = tree
             return
         end
 
         local progress = iter / MAX_ITERATIONS
-        local baseAngle = math.lerp(0, BASE_ANGLE, progress)
+        local baseAngle = math.lerp(10, BASE_ANGLE, progress) -- Start with a more upward angle
         local variation = 25 * (1 - progress * 0.7)
         local droopAngle = baseAngle + math.random(-variation, variation)
         -- Randomly orient the new branch around the parent
@@ -347,14 +333,16 @@ function NatureService.createRegularTree(position)
         newBranch.Material = Enum.Material.Wood
         newBranch.Anchored = true
 
-        local newWidth = parentBranch.Size.Y * math.random(60, 80) / 100
-        local newLength = parentBranch.Size.X * math.random(80, 95) / 100
+        local newWidth = parentBranch.Size.Y * math.random(70, 85) / 100
+        local newLength = parentBranch.Size.X * math.random(85, 95) / 100
         newBranch.Size = Vector3.new(newLength, newWidth, newWidth)
-        -- Set the pivot to the base of the branch so it rotates correctly
+        -- Set the pivot to the base of the branch
         newBranch.PivotOffset = CFrame.new(-newLength / 2, 0, 0)
 
         -- Position and orient the new branch at the end of the parent
-        newBranch:PivotTo(pivot * origin * rotation)
+        local parentPivot = parentBranch:GetPivot()
+        local parentEnd = CFrame.new(parentBranch.Size.X, 0, 0)
+        newBranch:PivotTo(parentPivot * parentEnd * rotation)
         newBranch.Parent = tree
 
         -- Continue growing the main branch
@@ -364,15 +352,38 @@ function NatureService.createRegularTree(position)
         local chance = math.max(0.1, 1.2 - progress * 0.8)
         while math.random() < chance do
             generateBranch(newBranch, iter + 1)
-            chance *= 0.6 -- Decrease the chance for each additional side branch
+            chance *= 0.6
         end
     end
 
-    -- Start the generation from the initial "root" branch
-    generateBranch(rootBranch, 0)
+    -- Create the initial main branches sprouting from the top of the trunk
+    local trunkTopCFrame = CFrame.new(position + Vector3.new(0, trunkHeight, 0))
+    local numMainBranches = math.random(3, 5)
+    for i = 1, numMainBranches do
+        -- Create the first branch part
+        local startBranch = Instance.new("Part")
+        startBranch.Name = "Branch"
+        startBranch.Shape = Enum.PartType.Block
+        startBranch.Color = woodColor
+        startBranch.Material = Enum.Material.Wood
+        startBranch.Anchored = true
 
-    -- The initial horizontal rootBranch is just for generation, destroy it after
-    rootBranch:Destroy()
+        local startLength = trunkHeight * (math.random(40, 60) / 100)
+        local startWidth = trunkRadius * (math.random(60, 80) / 100)
+        startBranch.Size = Vector3.new(startLength, startWidth, startWidth)
+        startBranch.PivotOffset = CFrame.new(-startLength / 2, 0, 0)
+
+        -- Calculate a natural upward and outward angle for the first branches
+        local upwardAngle = math.rad(math.random(30, 60))
+        local horizontalAngle = math.rad(math.random(0, 360))
+        local startRotation = CFrame.Angles(0, horizontalAngle, 0) * CFrame.Angles(0, 0, upwardAngle)
+
+        startBranch:PivotTo(trunkTopCFrame * startRotation)
+        startBranch.Parent = tree
+
+        -- Start the recursive generation for this main branch
+        generateBranch(startBranch, 1)
+    end
 
     tree.PrimaryPart = trunk
     return tree
