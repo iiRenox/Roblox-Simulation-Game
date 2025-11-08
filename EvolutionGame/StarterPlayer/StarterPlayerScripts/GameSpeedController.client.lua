@@ -5,22 +5,26 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
--- UI Elements
-local screenGui = script.Parent
-local speedButton = Instance.new("TextButton")
-
 -- RemoteEvent for communication
 local changeSpeedEvent = ReplicatedStorage:WaitForChild("ChangeSpeedEvent")
 
 function setupUI()
+    local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "GameSpeedGui"
+    screenGui.Parent = playerGui
+
+    local speedButton = Instance.new("TextButton")
     speedButton.Name = "SpeedButton"
-    speedButton.Text = "Speed: 1x"
     speedButton.Size = UDim2.new(0, 150, 0, 50)
     speedButton.Position = UDim2.new(1, -160, 0, 10)
     speedButton.Parent = screenGui
 
     local speedTiers = {0.1, 1, 10, 100}
-    local currentSpeedIndex = 2
+    local currentSpeedIndex = 2 -- Start at 1x
+
+    speedButton.Text = "Speed: " .. speedTiers[currentSpeedIndex] .. "x"
 
     speedButton.MouseButton1Click:Connect(function()
         currentSpeedIndex = (currentSpeedIndex % #speedTiers) + 1

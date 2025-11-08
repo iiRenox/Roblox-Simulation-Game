@@ -10,7 +10,7 @@ local simulationSpeed = 1 -- Multiplier for the tick rate
 local timeOfDay = 0 -- 0 to 24 hours
 local day = 1
 local season = "Spring" -- Spring, Summer, Autumn, Winter
-local seasonLength = 120 -- seconds per season
+local daysPerSeason = 2 -- How many in-game days each season lasts
 
 local speedTiers = {0.1, 1, 10, 100}
 local currentSpeedIndex = 2 -- Start at 1x speed
@@ -42,25 +42,27 @@ function TimeService.start()
 
     -- Connect to the Heartbeat event, which fires every frame
     RunService.Heartbeat:Connect(function(deltaTime)
-        -- Increment the time of day, scaled by our simulation speed
-        timeOfDay = (timeOfDay + (deltaTime * simulationSpeed)) % 24
+        local scaledDeltaTime = deltaTime * simulationSpeed
 
-        -- A simple day counter
-        if timeOfDay < 0.1 then -- A new day has started
+        -- Increment the time of day
+        timeOfDay = (timeOfDay + scaledDeltaTime / 30) % 24 -- /30 to make days last a bit longer
+
+        -- Check for a new day
+        if timeOfDay < 0.1 and math.abs(timeOfDay - (scaledDeltaTime / 30)) > 1 then
             day = day + 1
-        end
+            print("A new day has begun. Day:", day)
 
-        -- Season cycle
-        local totalSeconds = day * 24 * 60 * 60 + timeOfDay * 60 * 60
-        local seasonIndex = math.floor(totalSeconds / seasonLength) % 4 + 1
-        local seasons = {"Spring", "Summer", "Autumn", "Winter"}
-        if seasons[seasonIndex] ~= season then
-            season = seasons[seasonIndex]
-            print("The season is now " .. season)
+            -- Check for a new season
+            local seasonIndex = math.floor((day - 1) / daysPerSeason) % 4 + 1
+            local seasons = {"Spring", "Summer", "Autumn", "Winter"}
+            if seasons[seasonIndex] ~= season then
+                season = seasons[seasonIndex]
+                print("The season is now " .. season)
+            end
         end
 
         -- Fire the tick event, passing the scaled delta time and the current season
-        onTick:Fire(deltaTime * simulationSpeed, season)
+        onTick:Fire(scaledDeltaTime, season)
     end)
 end
 

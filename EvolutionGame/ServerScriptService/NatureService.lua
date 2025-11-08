@@ -292,7 +292,7 @@ function NatureService.generateRivers(heightMap, xSize, zSize)
 end
 
 function NatureService.createTree(position)
-    NatureService.createRegularTree(position)
+    return NatureService.createRegularTree(position)
 end
 
 function NatureService.createBush(position)
