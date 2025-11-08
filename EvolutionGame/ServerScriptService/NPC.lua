@@ -69,6 +69,12 @@ function NPC:update(deltaTime, activeNPCs, spawnNPC)
     self.hunger = self.hunger + deltaTime * 0.1
     self.thirst = self.thirst + deltaTime * 0.15
 
+    if self.hunger > 100 then
+        print("An NPC has starved to death.")
+        self.model:Destroy()
+        return "dead"
+    end
+
     -- State machine driven by needs
     if self.hunger > 70 then
         if self.knowledge.toolBlueprints["SimpleSpear"] then
@@ -92,6 +98,12 @@ function NPC:update(deltaTime, activeNPCs, spawnNPC)
             if (self.model.PrimaryPart.Position - plant.PrimaryPart.Position).Magnitude < 10 then
                 self.hunger = 0
                 plant:Destroy()
+            end
+        else
+            -- Wander to search for food
+            if math.random() < 0.1 then
+                local randomDirection = Vector3.new(math.random(-150, 150), 0, math.random(-150, 150))
+                self:moveTo(self.model.PrimaryPart.Position + randomDirection)
             end
         end
     elseif self.state == "Wandering" then

@@ -122,8 +122,21 @@ function NPCService.start()
 
     -- Connect to the game loop
     TimeService.getTick():Connect(function(deltaTime, season)
-        for _, npc in ipairs(activeNPCs) do
-            npc:update(deltaTime, activeNPCs, NPCService.spawnNPC)
+        for i = #activeNPCs, 1, -1 do
+            local npc = activeNPCs[i]
+            local status = npc:update(deltaTime, activeNPCs, NPCService.spawnNPC)
+
+            if status == "dead" then
+                -- Also remove from tribe
+                for j, tribeNpc in ipairs(tribe) do
+                    if tribeNpc == npc then
+                        table.remove(tribe, j)
+                        break
+                    end
+                end
+                table.remove(activeNPCs, i)
+                continue
+            end
 
             -- "Eureka!" moment
             if npc.state == "Hunting" and math.random() < 0.01 then

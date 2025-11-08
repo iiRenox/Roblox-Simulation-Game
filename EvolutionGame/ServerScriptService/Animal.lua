@@ -138,6 +138,12 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     self.age = self.age + deltaTime
     self.hunger = self.hunger + deltaTime * 0.1
 
+    if self.hunger > 100 then
+        print("An animal has starved to death.")
+        self.model:Destroy()
+        return "dead"
+    end
+
     self:grow(deltaTime)
 
     -- State machine logic
@@ -155,6 +161,12 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
             self:moveTo(food.PrimaryPart.Position)
             if (self.model.PrimaryPart.Position - food.PrimaryPart.Position).Magnitude < 10 then
                 self:eat(food)
+            end
+        else
+            -- Wander to search for food
+            if math.random() < 0.1 then
+                local randomDirection = Vector3.new(math.random(-200, 200), 0, math.random(-200, 200))
+                self:moveTo(self.model.PrimaryPart.Position + randomDirection)
             end
         end
     elseif self.state == "Breeding" then

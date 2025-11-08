@@ -41,7 +41,8 @@ function Tree.new(model)
     self.lastReproduction = 0
 
     -- Start as a small sapling
-    self.model:ScaleTo(2)
+    self.model:ScaleTo(1)
+    self.currentScale = 1
 
     return self
 end
@@ -56,12 +57,11 @@ function Tree:grow(deltaTime)
     end
 
     if self.growthState == "Sapling" then
-        local currentHeight = self.model.PrimaryPart.Size.Y
-        if currentHeight < self.genome.maxHeight then
+        if self.currentScale < self.genome.maxHeight then
             -- The growth logic will be more complex in the future,
             -- but for now, we'll keep it simple.
-            local newScale = currentHeight + self.genome.growthRate * deltaTime
-            self.model:ScaleTo(newScale)
+            self.currentScale = self.currentScale + self.genome.growthRate * deltaTime
+            self.model:ScaleTo(self.currentScale)
         else
             self.growthState = "Mature"
             print("A tree has matured!")

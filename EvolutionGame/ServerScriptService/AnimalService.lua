@@ -155,8 +155,12 @@ function AnimalService.start()
 
     -- Connect to the game loop
     TimeService.getTick():Connect(function(deltaTime)
-        for _, animal in ipairs(activeAnimals) do
-            animal:update(deltaTime, activeAnimals, AnimalService.spawnAnimal)
+        for i = #activeAnimals, 1, -1 do
+            local animal = activeAnimals[i]
+            local status = animal:update(deltaTime, activeAnimals, AnimalService.spawnAnimal)
+            if status == "dead" then
+                table.remove(activeAnimals, i)
+            end
         end
     end)
 end
