@@ -90,6 +90,31 @@ function NatureService.generateWorld()
         end
     end
     print("World generation complete.")
+
+    NatureService.generateTrees(heightMap, xSize, zSize, baseHeight)
+end
+
+function NatureService.generateTrees(heightMap, xSize, zSize, baseHeight)
+    print("Generating trees...")
+    local treeDensity = 0.05 -- 5% chance of a tree spawning in a valid location
+
+    for x = 1, xSize do
+        for z = 1, zSize do
+            if math.random() < treeDensity then
+                local y = heightMap[x][z]
+
+                -- Only spawn trees on grass
+                if y > 0 and y <= 30 then
+                    local worldX = (x - xSize / 2) * 4
+                    local worldZ = (z - zSize / 2) * 4
+                    local groundPosition = Vector3.new(worldX, y + baseHeight, worldZ)
+
+                    NatureService.createTree(groundPosition)
+                end
+            end
+        end
+    end
+    print("Tree generation complete.")
 end
 
 function NatureService.start()
@@ -169,6 +194,31 @@ function NatureService.generateRivers(heightMap, xSize, zSize)
             currentZ = lowestNeighborZ
         end
     end
+end
+
+function NatureService.createTree(position)
+    local tree = Instance.new("Model")
+    tree.Name = "Tree"
+    tree.Parent = workspace
+
+    local trunk = Instance.new("Part")
+    trunk.Name = "Trunk"
+    trunk.Parent = tree
+    trunk.Size = Vector3.new(2, 10, 2)
+    trunk.Position = position + Vector3.new(0, trunk.Size.Y / 2, 0)
+    trunk.Color = Color3.fromRGB(87, 56, 34) -- Brown
+    trunk.Anchored = true
+
+    local leaves = Instance.new("Part")
+    leaves.Name = "Leaves"
+    leaves.Parent = tree
+    leaves.Size = Vector3.new(8, 6, 8)
+    leaves.Position = trunk.Position + Vector3.new(0, trunk.Size.Y / 2, 0)
+    leaves.Color = Color3.fromRGB(34, 139, 34) -- Forest Green
+    leaves.Anchored = true
+
+    tree.PrimaryPart = trunk
+    return tree
 end
 
 return NatureService

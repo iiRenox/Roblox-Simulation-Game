@@ -1,11 +1,62 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
+local WanderAI = require(ReplicatedStorage.WanderAI)
 
 local AnimalService = {}
 
+function AnimalService.createAnimal(spawnPosition)
+    local animal = Instance.new("Model")
+    animal.Name = "Animal"
+
+    local torso = Instance.new("Part")
+    torso.Name = "Torso"
+    torso.Size = Vector3.new(4, 2, 6)
+    torso.Color = Color3.fromRGB(150, 75, 0)
+    torso.Parent = animal
+
+    local head = Instance.new("Part")
+    head.Name = "Head"
+    head.Size = Vector3.new(2, 2, 2)
+    head.Position = Vector3.new(0, 1, -4)
+    head.Color = Color3.fromRGB(150, 75, 0)
+    head.Parent = animal
+    local weldHead = Instance.new("WeldConstraint")
+    weldHead.Part0 = torso
+    weldHead.Part1 = head
+    weldHead.Parent = torso
+
+    local legSize = Vector3.new(1, 2, 1)
+    local legPositions = {
+        Vector3.new(1.5, -2, 2),
+        Vector3.new(-1.5, -2, 2),
+        Vector3.new(1.5, -2, -2),
+        Vector3.new(-1.5, -2, -2)
+    }
+
+    for i, pos in ipairs(legPositions) do
+        local leg = Instance.new("Part")
+        leg.Name = "Leg" .. i
+        leg.Size = legSize
+        leg.Position = pos
+        leg.Color = Color3.fromRGB(150, 75, 0)
+        leg.Parent = animal
+        local weldLeg = Instance.new("WeldConstraint")
+        weldLeg.Part0 = torso
+        weldLeg.Part1 = leg
+        weldLeg.Parent = torso
+    end
+
+    local humanoid = Instance.new("Humanoid")
+    humanoid.Parent = animal
+
+    animal.PrimaryPart = torso
+    animal:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+
+    return animal
+end
+
 function AnimalService.spawnAnimal()
     print("Attempting to spawn an animal...")
-    -- Spawn within the full range of the generated world
     local x = math.random(-1024, 1024)
     local z = math.random(-1024, 1024)
     print("Generated coordinates: " .. x .. ", " .. z)
@@ -14,16 +65,13 @@ function AnimalService.spawnAnimal()
 
     if groundPosition then
         print("Ground found at: " .. tostring(groundPosition))
-        local y = groundPosition.Y + 2
+        local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
 
-        local animal = Instance.new("Part")
+        local animal = AnimalService.createAnimal(spawnPosition)
         animal.Parent = workspace
-        animal.Size = Vector3.new(2, 2, 4)
-        animal.Position = Vector3.new(x, y, z)
-        animal.Anchored = false -- Animals should be able to move
-        animal.Name = "Animal"
-        animal.Color = Color3.fromRGB(150, 75, 0) -- Brown
-        print("Animal spawned successfully at: " .. tostring(animal.Position))
+        WanderAI.startWandering(animal)
+
+        print("Animal spawned successfully at: " .. tostring(spawnPosition))
     else
         print("Failed to find ground for animal at: " .. x .. ", " .. z)
     end
