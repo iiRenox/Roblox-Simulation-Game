@@ -3,12 +3,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local Tree = require(ServerScriptService.Tree)
+local Plant = require(ServerScriptService.Plant)
 local TimeService = require(ServerScriptService.TimeService)
 
 local NatureService = {}
 
 local natureFolder -- This will hold all the generated nature models
 local activeTrees = {} -- Holds all the active Tree objects
+local activePlants = {} -- Holds all the active Plant objects
+
+function NatureService.getActivePlants()
+    return activePlants
+end
 
 -- Noise parameters for foliage
 local foliageSmothness = 50
@@ -131,6 +137,31 @@ function NatureService.generateWorld()
     NatureService.generateTrees(xSize, zSize, seed)
     NatureService.generateBushes(xSize, zSize, seed)
     NatureService.generateFlowers(xSize, zSize, seed)
+    NatureService.generateUnderwaterPlants(xSize, zSize, seed)
+end
+
+function NatureService.generateUnderwaterPlants(xSize, zSize, seed)
+    for x = 1, xSize, 8 do
+        for z = 1, zSize, 8 do
+            local worldX = (x - xSize / 2) * 4
+            local worldZ = (z - zSize / 2) * 4
+
+            local waterPlantNoise = (math.noise(worldX / 30, worldZ / 30, seed + 8) + 1) / 2
+
+            if waterPlantNoise > 0.7 then
+                local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+
+                if groundPosition then
+                    local material = WorldUtil.getMaterialAtPosition(groundPosition)
+
+                    if material == Enum.Material.Water then
+                        NatureService.createPlant(groundPosition, "Seaweed")
+                    end
+                end
+            end
+        end
+        task.wait()
+    end
 end
 
 function NatureService.generateBushes(xSize, zSize, seed)
@@ -148,7 +179,7 @@ function NatureService.generateBushes(xSize, zSize, seed)
                     local material = WorldUtil.getMaterialAtPosition(groundPosition)
 
                     if material == Enum.Material.Grass then
-                        NatureService.createBush(groundPosition)
+                        NatureService.createPlant(groundPosition, "Bush")
                     end
                 end
             end
@@ -172,7 +203,7 @@ function NatureService.generateFlowers(xSize, zSize, seed)
                     local material = WorldUtil.getMaterialAtPosition(groundPosition)
 
                     if material == Enum.Material.Grass then
-                        NatureService.createFlower(groundPosition)
+                        NatureService.createPlant(groundPosition, "Flower")
                     end
                 end
             end
@@ -235,6 +266,18 @@ function NatureService.start()
                 table.remove(activeTrees, i)
             elseif season == "Spring" then
                 tree:reproduce()
+            end
+        end
+
+        -- Iterate backwards to safely remove dead plants
+        for i = #activePlants, 1, -1 do
+            local plant = activePlants[i]
+            local status = plant:grow(deltaTime)
+
+            if status == "dead" then
+                table.remove(activePlants, i)
+            elseif season == "Spring" then
+                plant:reproduce()
             end
         end
     end)
@@ -300,6 +343,42 @@ function NatureService.createTree(position)
     return NatureService.createRegularTree(position)
 end
 
+function NatureService.createPlant(position, plantType)
+    local model
+    if plantType == "Bush" then
+        model = NatureService.createBush(position)
+    elseif plantType == "Flower" then
+        model = NatureService.createFlower(position)
+    elseif plantType == "Seaweed" then
+        model = NatureService.createSeaweed(position)
+    else
+        return nil
+    end
+
+    local plantObject = Plant.new(model)
+    table.insert(activePlants, plantObject)
+    return plantObject
+end
+
+function NatureService.createSeaweed(position)
+    local seaweed = Instance.new("Model")
+    seaweed.Name = "Seaweed"
+    seaweed.Parent = natureFolder
+
+    local stalk = Instance.new("Part")
+    stalk.Name = "Stalk"
+    stalk.Parent = seaweed
+    stalk.Shape = Enum.PartType.Block
+    stalk.Size = Vector3.new(0.5, math.random(5, 10), 0.5)
+    stalk.Position = position + Vector3.new(0, stalk.Size.Y / 2, 0)
+    stalk.Color = Color3.fromRGB(22, 84, 46)
+    stalk.Material = Enum.Material.LeafyGrass
+    stalk.Anchored = true
+
+    seaweed.PrimaryPart = stalk
+    return seaweed
+end
+
 function NatureService.createBush(position)
     local bush = Instance.new("Model")
     bush.Name = "Bush"
@@ -330,6 +409,32 @@ function NatureService.createBush(position)
 
     bush.PrimaryPart = leaves
     return bush
+end
+
+function NatureService.createFlower(position)
+    local flower = Instance.new("Model")
+    flower.Name = "Flower"
+    flower.Parent = natureFolder
+
+    local stem = Instance.new("Part")
+    stem.Name = "Stem"
+    stem.Parent = flower
+    stem.Size = Vector3.new(0.2, 1, 0.2)
+    stem.Position = position + Vector3.new(0, 0.5, 0)
+    stem.Color = Color3.fromRGB(0, 100, 0)
+    stem.Anchored = true
+
+    local petal = Instance.new("Part")
+    petal.Name = "Petal"
+    petal.Parent = flower
+    petal.Shape = Enum.PartType.Ball
+    petal.Size = Vector3.new(1, 1, 1)
+    petal.Position = stem.Position + Vector3.new(0, 0.5, 0)
+    petal.Color = Color3.fromHSV(math.random(), 1, 1)
+    petal.Anchored = true
+
+    flower.PrimaryPart = stem
+    return flower
 end
 
 function NatureService.createRegularTree(position)
@@ -371,7 +476,7 @@ function NatureService.createRegularTree(position)
 
         trunkCFrame = trunkCFrame * CFrame.new(0, segmentLength / 2, 0)
     end
-    local trunk = trunkPart -- The last part is the top of the trunk
+    local trunk = trunkParts[1] -- The first part is the base of the trunk
 
     -- Recursive function to generate the tree structure
     local function generateBranch(parentBranch, iter)

@@ -54,7 +54,7 @@ function Animal:grow(deltaTime)
     end
 end
 
-function Animal:findFood(activeAnimals)
+function Animal:findFood(activeAnimals, activePlants)
     -- NOTE: This is not a scalable solution. A spatial partitioning system (like a quadtree)
     -- would be needed to efficiently query for nearby entities in a large-scale simulation.
     local nearestFood = nil
@@ -62,15 +62,12 @@ function Animal:findFood(activeAnimals)
     local searchRadius = self.genome.eyesight -- Use eyesight for now
 
     if self.genome.dietType < 0.5 then -- Herbivore
-        local natureFolder = workspace:FindFirstChild("Nature")
-        if natureFolder then
-            for _, child in ipairs(natureFolder:GetChildren()) do
-                if child.Name == "Bush" then
-                    local distance = (self.model.PrimaryPart.Position - child.PrimaryPart.Position).Magnitude
-                    if distance < minDistance and distance < searchRadius then
-                        minDistance = distance
-                        nearestFood = child
-                    end
+        for _, plant in ipairs(activePlants) do
+            if plant and plant.model and plant.model.PrimaryPart then
+                local distance = (self.model.PrimaryPart.Position - plant.model.PrimaryPart.Position).Magnitude
+                if distance < minDistance and distance < searchRadius then
+                    minDistance = distance
+                    nearestFood = plant
                 end
             end
         end
@@ -90,12 +87,12 @@ function Animal:findFood(activeAnimals)
 end
 
 function Animal:eat(food)
-    if not food or not food.PrimaryPart then return end
+    if not food or not food.model or not food.model.PrimaryPart then return end
 
-    print("An animal is eating a bush.")
-    self.hunger = 0
+    print("An animal is eating a " .. food.model.Name)
+    self.hunger = self.hunger - food.genome.nutritionalValue
     self.state = "Idle"
-    food:Destroy() -- The bush is consumed
+    food.model:Destroy() -- The plant is consumed
 end
 
 function Animal:findMate(activeAnimals)
@@ -107,7 +104,7 @@ function Animal:findMate(activeAnimals)
 
     -- Find another animal of the same species (for now, any land animal)
     for _, otherAnimal in ipairs(activeAnimals) do
-        if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.state == "Breeding" then
+        if otherAnimal and otherAnimal.model and otherAnimal.model.PrimaryPart and self.model and self.model.PrimaryPart and otherAnimal ~= self and otherAnimal.state == "Breeding" then
             local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
             if distance < minDistance and distance < searchRadius then
                 minDistance = distance
@@ -134,7 +131,7 @@ function Animal:breedWith(mate, spawnAnimal)
     mate.state = "Idle"
 end
 
-function Animal:update(deltaTime, activeAnimals, spawnAnimal)
+function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
     self.age = self.age + deltaTime
     self.hunger = self.hunger + deltaTime * 0.1
 
@@ -156,10 +153,10 @@ function Animal:update(deltaTime, activeAnimals, spawnAnimal)
     end
 
     if self.state == "Foraging" then
-        local food = self:findFood(activeAnimals)
+        local food = self:findFood(activeAnimals, activePlants)
         if food then
-            self:moveTo(food.PrimaryPart.Position)
-            if (self.model.PrimaryPart.Position - food.PrimaryPart.Position).Magnitude < 10 then
+            self:moveTo(food.model.PrimaryPart.Position)
+            if (self.model.PrimaryPart.Position - food.model.PrimaryPart.Position).Magnitude < 10 then
                 self:eat(food)
             end
         else

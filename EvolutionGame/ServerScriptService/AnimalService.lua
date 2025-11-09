@@ -85,6 +85,9 @@ function AnimalService.createWaterAnimal(spawnPosition)
     weldTail.Part1 = tail
     weldTail.Parent = torso
 
+    local humanoid = Instance.new("Humanoid")
+    humanoid.Parent = animal
+
     animal.PrimaryPart = torso
     animal:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
 
@@ -136,10 +139,18 @@ function AnimalService.spawnAnimal()
         else
             local waterDepth = 0
             local waterPosition = Vector3.new(groundPosition.X, waterDepth, groundPosition.Z)
-            local animal = AnimalService.createWaterAnimal(waterPosition)
-            animal.Parent = workspace
-            -- NOTE: Water animals do not yet have AI
+            local animalModel = AnimalService.createWaterAnimal(waterPosition)
+            animalModel.Parent = workspace
+
+            local animalObject = Animal.new(animalModel)
+            table.insert(activeAnimals, animalObject)
+
+            -- Apply genetic traits
+            animalModel:ScaleTo(1) -- Start as an infant
+            animalObject.humanoid.WalkSpeed = animalObject.genome.speed
+
             print("Water animal spawned successfully at: " .. tostring(waterPosition))
+            return animalObject
         end
     else
         print("Failed to find a valid location for animal after " .. maxAttempts .. " attempts.")
@@ -155,9 +166,12 @@ function AnimalService.start()
 
     -- Connect to the game loop
     TimeService.getTick():Connect(function(deltaTime)
+        local NatureService = require(ServerScriptService.NatureService)
+        local activePlants = NatureService.getActivePlants()
+
         for i = #activeAnimals, 1, -1 do
             local animal = activeAnimals[i]
-            local status = animal:update(deltaTime, activeAnimals, AnimalService.spawnAnimal)
+            local status = animal:update(deltaTime, activeAnimals, activePlants, AnimalService.spawnAnimal)
             if status == "dead" then
                 table.remove(activeAnimals, i)
             end

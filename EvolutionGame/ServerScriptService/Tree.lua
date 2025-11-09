@@ -11,15 +11,15 @@ Tree.__index = Tree
 -- The genetic blueprint for all trees, based on "Pillar 1"
 local treeGenomeTemplate = {
     -- Size & Structure
-    maxHeight = { type = "number", defaultValue = 40, min = 10, max = 80 },
-    canopyWidth = { type = "number", defaultValue = 20, min = 5, max = 40 },
-    trunkThickness = { type = "number", defaultValue = 4, min = 2, max = 10 },
+    maxHeight = { type = "number", defaultValue = 15, min = 10, max = 80 },
+    canopyWidth = { type = "number", defaultValue = 10, min = 5, max = 40 },
+    trunkThickness = { type = "number", defaultValue = 2, min = 2, max = 10 },
     rootDepth = { type = "number", defaultValue = 10, min = 5, max = 20 },
     -- Energy & Resources
     sunlightRequirement = { type = "number", defaultValue = 0.5, min = 0.1, max = 1 },
     waterConsumption = { type = "number", defaultValue = 0.5, min = 0.1, max = 1 },
     -- Lifespan & Growth
-    growthRate = { type = "number", defaultValue = 1, min = 0.2, max = 3 },
+    growthRate = { type = "number", defaultValue = 0.5, min = 0.2, max = 3 },
     lifespan = { type = "number", defaultValue = 100, min = 50, max = 200 },
     -- Reproduction
     seedType = { type = "string", defaultValue = "Wind", possibleValues = {"Wind", "Fruit", "Nut", "Toxic"} },
@@ -47,6 +47,22 @@ function Tree.new(model)
     return self
 end
 
+function Tree:scaleUpwards(scale)
+    local originalPivot = self.model:GetPivot()
+    local basePosition = originalPivot.Position
+
+    for _, part in ipairs(self.model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            -- Calculate the part's offset from the model's pivot
+            local offset = part.Position - basePosition
+
+            -- Scale the part's size and its offset from the base
+            part.Size = part.Size * scale
+            part.Position = basePosition + (offset * scale)
+        end
+    end
+end
+
 function Tree:grow(deltaTime)
     self.age = self.age + deltaTime
 
@@ -58,10 +74,10 @@ function Tree:grow(deltaTime)
 
     if self.growthState == "Sapling" then
         if self.currentScale < self.genome.maxHeight then
-            -- The growth logic will be more complex in the future,
-            -- but for now, we'll keep it simple.
-            self.currentScale = self.currentScale + self.genome.growthRate * deltaTime
-            self.model:ScaleTo(self.currentScale)
+            local growthAmount = self.genome.growthRate * deltaTime
+            local newScale = 1 + growthAmount / self.currentScale
+            self:scaleUpwards(newScale)
+            self.currentScale = self.currentScale + growthAmount
         else
             self.growthState = "Mature"
             print("A tree has matured!")
