@@ -61,6 +61,10 @@ function Animal:findFood(activeAnimals, activePlants)
     local minDistance = math.huge
     local searchRadius = self.genome.eyesight -- Use eyesight for now
 
+    if not self.model or not self.model.PrimaryPart then
+        return nil
+    end
+
     if self.genome.dietType < 0.5 then -- Herbivore
         for _, plant in ipairs(activePlants) do
             if plant and plant.model and plant.model.PrimaryPart then
@@ -73,11 +77,11 @@ function Animal:findFood(activeAnimals, activePlants)
         end
     else -- Carnivore
         for _, otherAnimal in ipairs(activeAnimals) do
-            if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.genome.dietType < 0.5 then -- Hunt herbivores
+            if otherAnimal and otherAnimal.model and otherAnimal.model.PrimaryPart and otherAnimal ~= self and otherAnimal.genome.dietType < 0.5 then -- Hunt herbivores
                 local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
                 if distance < minDistance and distance < searchRadius then
                     minDistance = distance
-                    nearestFood = otherAnimal.model
+                    nearestFood = otherAnimal
                 end
             end
         end
@@ -90,9 +94,13 @@ function Animal:eat(food)
     if not food or not food.model or not food.model.PrimaryPart then return end
 
     print("An animal is eating a " .. food.model.Name)
-    self.hunger = self.hunger - food.genome.nutritionalValue
+    if food:IsA("Animal") then
+        self.hunger = self.hunger - food.genome.size -- Simple nutrition for now
+    else
+        self.hunger = self.hunger - food.genome.nutritionalValue
+    end
     self.state = "Idle"
-    food.model:Destroy() -- The plant is consumed
+    food.model:Destroy() -- The food is consumed
 end
 
 function Animal:findMate(activeAnimals)
