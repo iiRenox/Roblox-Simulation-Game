@@ -102,7 +102,7 @@ function NPCService.spawnNPC()
 
         attempts = attempts + 1
 
-    until (groundPosition and material ~= Enum.Material.Water) or attempts > 50
+    until (groundPosition and material ~= Enum.Material.Water) or attempts > 500
 
     if groundPosition and material ~= Enum.Material.Water then
         print("Ground found at: " .. tostring(groundPosition))

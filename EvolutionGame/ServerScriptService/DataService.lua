@@ -26,6 +26,7 @@ end
 -- Fires on every tick, but only collects data once per in-game day.
 -- @param _ number The time elapsed since the last frame.
 function DataService.onTick(_, _, day)
+    -- This condition ensures we log data for the very first day, and then only once per day after.
     if day > lastTickDay then
         lastTickDay = day
 
