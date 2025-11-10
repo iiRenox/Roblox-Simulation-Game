@@ -141,10 +141,11 @@ function NPCService.start()
 
         for i = #activeNPCs, 1, -1 do
             local npc = activeNPCs[i]
-            local status = npc:update(deltaTime, activeNPCs, activePlants, NPCService.spawnNPC)
+            if npc then
+                local status = npc:update(deltaTime, activeNPCs, activePlants, NPCService.spawnNPC)
 
-            if status == "dead" then
-                -- Also remove from tribe
+                if status == "dead" then
+                    -- Also remove from tribe
                 for j, tribeNpc in ipairs(tribe) do
                     if tribeNpc == npc then
                         table.remove(tribe, j)
@@ -161,6 +162,10 @@ function NPCService.start()
                     npc.knowledge.toolBlueprints["SimpleSpear"] = true
                     print("An NPC has discovered how to make a Simple Spear!")
                 end
+            end
+            else
+                -- If the entry is somehow nil, remove it
+                table.remove(activeNPCs, i)
             end
         end
 

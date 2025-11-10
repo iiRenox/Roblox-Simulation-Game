@@ -27,13 +27,14 @@ local animalGenomeTemplate = {
 }
 
 --- Creates a new Animal instance.
--- @param model Model The visual representation of the animal in the workspace.
+--- Creates a new Animal instance without a model.
+-- The model must be assigned separately after creation.
 -- @return table The new Animal object.
-function Animal.new(model)
+function Animal.new()
     local self = setmetatable({}, Animal)
 
-    self.model = model
-    self.humanoid = model:FindFirstChildOfClass("Humanoid")
+    self.model = nil
+    self.humanoid = nil
     self.genome = Genome.create(animalGenomeTemplate)
     self.age = 0
     self.hunger = 0
