@@ -39,6 +39,12 @@ local animalGenomeTemplate = {
 function Animal.new(model)
     local self = setmetatable({}, Animal)
 
+    -- Safeguard against initialization without a model
+    if not model then
+        warn("Attempted to create an Animal with a nil model.")
+        return nil
+    end
+
     self.model = model
     self.humanoid = model:FindFirstChildOfClass("Humanoid")
     self.genome = Genome.create(animalGenomeTemplate)

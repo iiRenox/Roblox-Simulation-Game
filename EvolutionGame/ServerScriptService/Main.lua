@@ -31,9 +31,12 @@ TimeService.start()
 DataService.start()
 
 -- Start world generation and wait for it to complete
+-- Start world generation
 local onNatureFinished = NatureService.start()
-onNatureFinished:Wait()
 
--- Once the world is generated, start the entity services
-AnimalService.start()
-NPCService.start()
+-- Connect the dependent services to the completion event
+onNatureFinished:Connect(function()
+	print("Nature generation finished. Starting Animal and NPC services.")
+	AnimalService.start()
+	NPCService.start()
+end)

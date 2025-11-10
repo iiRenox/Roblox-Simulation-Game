@@ -79,6 +79,11 @@ end
 -- It drops a "seed" in a random nearby location. After a delay, if the location
 -- is suitable, a new plant with a mutated genome will spawn.
 function Plant:reproduce()
+    -- A plant cannot reproduce if it doesn't physically exist in the world.
+    if not self.model or not self.model.PrimaryPart then
+        return
+    end
+
     if (os.clock() - self.lastReproduction) < self.genome.reproductiveRate then
         return
     end
