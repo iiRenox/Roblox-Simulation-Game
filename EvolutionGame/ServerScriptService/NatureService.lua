@@ -175,8 +175,21 @@ function NatureService.generateWorld()
 				local waterSize = Vector3.new(4, 0 - baseHeight, 4)
 				local waterPosition = Vector3.new(worldX, baseHeight + waterSize.Y / 2, worldZ)
 				terrain:FillBlock(CFrame.new(waterPosition), waterSize, Enum.Material.Water)
+
+				-- Also fill a rock bed below the water to prevent voids
+				local rockBedHeight = -5
+				local rockSize = Vector3.new(4, y - (baseHeight + rockBedHeight), 4)
+				local rockPosition = Vector3.new(worldX, (baseHeight + rockBedHeight) + rockSize.Y / 2, worldZ)
+				if rockSize.Y > 0 then
+					terrain:FillBlock(CFrame.new(rockPosition), rockSize, Enum.Material.Rock)
+				end
 			else
-				-- Ensure the size is positive before trying to fill the block
+				-- Ensure there is a minimum "floor" to prevent holes in the world
+				local minY = baseHeight - 5
+				local clampedY = math.max(y, minY)
+				local size = Vector3.new(4, clampedY - baseHeight, 4)
+				local position = Vector3.new(worldX, baseHeight + size.Y/2, worldZ)
+
 				if size.Y > 0 then
 					terrain:FillBlock(CFrame.new(position), size, material)
 				end
@@ -335,39 +348,43 @@ function NatureService.generateFlora(xSize, zSize, seed, heightMap, temperatureM
 
 			local biome = getBiome(y, temperatureMap[x][z], moistureMap[x][z])
 			if biome.density > 0 and math.random() < biome.density then
-				local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
-				if groundPosition then
-					local material = WorldUtil.getMaterialAtPosition(groundPosition)
+				-- OPTIMIZATION: Construct the ground position directly from the heightMap
+				-- This avoids hundreds of thousands of expensive raycast calls.
+				local groundPosition = Vector3.new(worldX, y, worldZ)
+				local material = biome.materials[1] -- The primary material of the biome
 
-					if material == biome.material then
-						local foliageNoise = (math.noise(worldX/50, worldZ/50, seed+5)+1)/2
+				-- We can now check the material directly without a second expensive call
+				if material ~= Enum.Material.Water and material ~= Enum.Material.Lava then
+					local foliageNoise = (math.noise(worldX/50, worldZ/50, seed+5)+1)/2
 
-						-- Spawn trees
-						if primordialTrees < maxPrimordialTrees and (biome == BIOMES.FOREST or biome == BIOMES.JUNGLE) and foliageNoise > 0.6 then
-							NatureService.createTree(groundPosition)
-							primordialTrees += 1
-						-- Spawn bushes
-						elseif (biome == BIOMES.PLAINS or biome == BIOMES.FOREST) and foliageNoise > 0.5 then
-							NatureService.createPlant(groundPosition, "Bush")
-						-- Spawn flowers/mushrooms
-						elseif (biome == BIOMES.PLAINS or biome == BIOMES.SWAMP) and foliageNoise < 0.4 then
-							if biome == BIOMES.SWAMP then
-								NatureService.createPlant(groundPosition, "Mushroom")
-							else
-								NatureService.createPlant(groundPosition, "Flower")
-							end
-						-- Spawn underwater plants
-						elseif biome == BIOMES.WATER and material == Enum.Material.Water then
-							NatureService.createPlant(groundPosition, "Seaweed")
-						-- Spawn desert plants
-						elseif biome == BIOMES.DESERT and foliageNoise > 0.7 then
-							NatureService.createPlant(groundPosition, "Cactus")
+					-- Spawn trees
+					if primordialTrees < maxPrimordialTrees and (biome == BIOMES.FOREST or biome == BIOMES.JUNGLE) and foliageNoise > 0.6 then
+						NatureService.createTree(groundPosition)
+						primordialTrees += 1
+					-- Spawn bushes
+					elseif (biome == BIOMES.PLAINS or biome == BIOMES.FOREST) and foliageNoise > 0.5 then
+						NatureService.createPlant(groundPosition, "Bush")
+					-- Spawn flowers/mushrooms
+					elseif (biome == BIOMES.PLAINS or biome == BIOMES.SWAMP) and foliageNoise < 0.4 then
+						if biome == BIOMES.SWAMP then
+							NatureService.createPlant(groundPosition, "Mushroom")
+						else
+							NatureService.createPlant(groundPosition, "Flower")
 						end
+					-- Spawn desert plants
+					elseif biome == BIOMES.DESERT and foliageNoise > 0.7 then
+						NatureService.createPlant(groundPosition, "Cactus")
 					end
+				-- Handle underwater plants separately
+				elseif biome == BIOMES.WATER then
+					-- For underwater plants, we need to find the bottom of the sea
+					local waterBottomY = heightMap[x][z]
+					local waterBottomPosition = Vector3.new(worldX, waterBottomY, worldZ)
+					NatureService.createPlant(waterBottomPosition, "Seaweed")
 				end
 			end
 		end
-		if x % 32 == 0 then task.wait() end
+		if x % 64 == 0 then task.wait() end -- Yield more frequently on this large loop
 	end
 end
 
