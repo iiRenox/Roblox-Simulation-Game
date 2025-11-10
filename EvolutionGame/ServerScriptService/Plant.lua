@@ -100,13 +100,14 @@ function Plant:reproduce()
     )
 
     local groundPosition = WorldUtil.getGroundPosition(seedDropPosition.X, seedDropPosition.Z)
+    local plantTypeName = self.model.Name
 
     if groundPosition then
         delay(math.random(2, 8), function()
             local material = WorldUtil.getMaterialAtPosition(groundPosition)
             if material == Enum.Material.Grass or material == Enum.Material.Water then
                 -- The NatureService's generic createPlant function handles different plant types
-                local newPlantObject = NatureService.createPlant(groundPosition, self.model.Name)
+                local newPlantObject = NatureService.createPlant(groundPosition, plantTypeName)
                 if newPlantObject then
                     newPlantObject.genome = Genome.mutate(self.genome, plantGenomeTemplate)
                 end

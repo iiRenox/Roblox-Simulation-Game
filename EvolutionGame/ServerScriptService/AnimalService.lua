@@ -128,15 +128,20 @@ end
 
 --- Creates a model for a water-based animal.
 -- @param spawnPosition Vector3 The world position where the animal should be created.
+-- @param genome table The animal's genome, used to define its physical characteristics.
 -- @return Model The fully constructed and welded water animal model.
-function AnimalService.createWaterAnimal(spawnPosition)
+function AnimalService.createWaterAnimal(spawnPosition, genome)
     local animal = Instance.new("Model")
     animal.Name = "WaterAnimal"
 
+    -- Body shape and color are influenced by genes
+    local baseColor = Color3.fromHSV(0.6, 0.8, 0.6 + (genome.size / 30))
+    local torsoSize = Vector3.new(genome.size * 0.4, genome.size * 0.6, genome.size)
+
     local torso = Instance.new("Part")
     torso.Name = "Torso"
-    torso.Size = Vector3.new(2, 3, 5)
-    torso.Color = Color3.fromRGB(0, 100, 200) -- Blue
+    torso.Size = torsoSize
+    torso.Color = baseColor
     torso.Parent = animal
 
     local tail = Instance.new("Part")
@@ -192,39 +197,45 @@ function AnimalService.spawnAnimal()
     end
 
     if positionFound then
+        local animalObject
         if animalType == 1 then
             local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
 
-            local animalObject = Animal.new(nil) -- Create the object first to get the genome
-            local animalModel = AnimalService.createLandAnimal(spawnPosition, animalObject.genome)
-            animalObject.model = animalModel
-            animalObject.humanoid = animalModel:FindFirstChildOfClass("Humanoid")
+            -- Create a temporary genome to build the model
+            local tempGenome = require(ReplicatedStorage.Genome).create(require(ServerScriptService.Animal).animalGenomeTemplate)
+            local animalModel = AnimalService.createLandAnimal(spawnPosition, tempGenome)
             animalModel.Parent = workspace
 
-            table.insert(activeAnimals, animalObject)
-
-            -- Apply genetic traits
-            animalModel:ScaleTo(1) -- Start as an infant
-            animalObject.humanoid.WalkSpeed = animalObject.genome.speed
+            -- Now create the definitive Animal object with the model
+            animalObject = Animal.new(animalModel)
+            if not animalObject then return nil end -- Guard against constructor failure
+            animalObject.genome = tempGenome -- Assign the genome we used
 
             print("Land animal spawned successfully at: " .. tostring(spawnPosition))
-            return animalObject
         else
             local waterDepth = 0
             local waterPosition = Vector3.new(groundPosition.X, waterDepth, groundPosition.Z)
-            local animalModel = AnimalService.createWaterAnimal(waterPosition)
+
+             -- Create a temporary genome to build the model
+            local tempGenome = require(ReplicatedStorage.Genome).create(require(ServerScriptService.Animal).animalGenomeTemplate)
+            local animalModel = AnimalService.createWaterAnimal(waterPosition, tempGenome)
             animalModel.Parent = workspace
 
-            local animalObject = Animal.new(animalModel)
-            table.insert(activeAnimals, animalObject)
-
-            -- Apply genetic traits
-            animalModel:ScaleTo(1) -- Start as an infant
-            animalObject.humanoid.WalkSpeed = animalObject.genome.speed
+            -- Now create the definitive Animal object with the model
+            animalObject = Animal.new(animalModel)
+            if not animalObject then return nil end -- Guard against constructor failure
+            animalObject.genome = tempGenome -- Assign the genome we used
 
             print("Water animal spawned successfully at: " .. tostring(waterPosition))
-            return animalObject
         end
+
+        table.insert(activeAnimals, animalObject)
+
+        -- Apply genetic traits
+        animalObject.model:ScaleTo(1) -- Start as an infant
+        animalObject.humanoid.WalkSpeed = animalObject.genome.speed
+
+        return animalObject
     else
         print("Failed to find a valid location for animal after " .. maxAttempts .. " attempts.")
         return nil
