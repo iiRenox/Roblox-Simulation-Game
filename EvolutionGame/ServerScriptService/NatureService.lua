@@ -158,12 +158,20 @@ function NatureService.generateWorld()
 			local textureNoise = (math.noise(worldX / textureSmothness, worldZ / textureSmothness, seed + 15) + 1) / 2
 
 			local material
-			if textureNoise > 0.8 then
-				material = biome.materials[3] or biome.materials[1]
-			elseif textureNoise > 0.6 then
-				material = biome.materials[2] or biome.materials[1]
+			local primaryMaterial = biome.materials[1]
+
+			-- For water and grass, always use the primary material to avoid holes/patches.
+			-- For other biomes, use noise to blend textures for a more varied look.
+			if primaryMaterial == Enum.Material.Water or primaryMaterial == Enum.Material.Grass then
+				material = primaryMaterial
 			else
-				material = biome.materials[1]
+				if textureNoise > 0.8 then
+					material = biome.materials[3] or primaryMaterial
+				elseif textureNoise > 0.6 then
+					material = biome.materials[2] or primaryMaterial
+				else
+					material = primaryMaterial
+				end
 			end
 
 			-- Define the terrain block (column)
@@ -354,7 +362,7 @@ function NatureService.generateFlora(xSize, zSize, seed, heightMap, temperatureM
 				local material = biome.materials[1] -- The primary material of the biome
 
 				-- We can now check the material directly without a second expensive call
-				if material ~= Enum.Material.Water and material ~= Enum.Material.Lava then
+				if material ~= Enum.Material.Water and material ~= Enum.Material.Neon then
 					local foliageNoise = (math.noise(worldX/50, worldZ/50, seed+5)+1)/2
 
 					-- Spawn trees
@@ -430,7 +438,8 @@ function NatureService.start()
 			lava.Shape = Enum.PartType.Ball
 			lava.Size = Vector3.new(200, 200, 200)
 			lava.Position = Vector3.new(0, 250, 0) -- Approximate volcano center
-			lava.Material = Enum.Material.Lava
+			lava.Material = Enum.Material.Neon
+			lava.Color = Color3.fromRGB(255, 107, 0) -- Bright orange-red for lava
 			lava.Anchored = true
 			lava.CanCollide = false
 			lava.Parent = workspace
