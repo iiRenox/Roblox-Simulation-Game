@@ -1,10 +1,11 @@
 --!strict
--- Plant Class
--- Manages the state and behavior of a single plant, driven by its genome.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Genome = require(ReplicatedStorage.Genome)
 
+--- Manages the state and behavior of a single generic plant (e.g., bush, flower).
+-- This class handles the lifecycle of a plant, including its growth, reproduction,
+-- and death, all governed by its unique genetic makeup.
 local Plant = {}
 Plant.__index = Plant
 
@@ -24,6 +25,9 @@ local plantGenomeTemplate = {
     toxicity = { type = "number", defaultValue = 0, min = 0, max = 1 },
 }
 
+--- Creates a new Plant instance.
+-- @param model Model The visual representation of the plant in the workspace.
+-- @return table The new Plant object.
 function Plant.new(model)
     local self = setmetatable({}, Plant)
 
@@ -37,6 +41,9 @@ function Plant.new(model)
     return self
 end
 
+--- Handles the death of the plant.
+-- Destroys the plant's model and marks it for cleanup.
+-- @return string Returns "dead" to signal removal from the active list.
 function Plant:die()
     if self.model then
         self.model:Destroy()
@@ -45,6 +52,10 @@ function Plant:die()
     return "dead"
 end
 
+--- The main update loop for the plant's life cycle.
+-- This function is called on every simulation tick. It handles aging and growth.
+-- @param deltaTime number The time since the last update.
+-- @return string? "dead" if the plant has died of old age, otherwise nil.
 function Plant:grow(deltaTime)
     self.age = self.age + deltaTime
 
@@ -52,18 +63,22 @@ function Plant:grow(deltaTime)
         return self:die()
     end
 
-    if self.model:GetScale() < self.genome.maxSize then
+    if self.model and self.model:GetScale() < self.genome.maxSize then
         local newScale = self.model:GetScale() + self.genome.growthRate * deltaTime
         self.model:ScaleTo(newScale)
     end
 end
 
+--- Handles the reproduction of the plant.
+-- It drops a "seed" in a random nearby location. After a delay, if the location
+-- is suitable, a new plant with a mutated genome will spawn.
 function Plant:reproduce()
     if (os.clock() - self.lastReproduction) < self.genome.reproductiveRate then
         return
     end
     self.lastReproduction = os.clock()
 
+    -- These are required late to avoid circular dependencies
     local NatureService = require(game.ServerScriptService.NatureService)
     local WorldUtil = require(game.ReplicatedStorage.WorldUtil)
 
@@ -78,8 +93,8 @@ function Plant:reproduce()
     if groundPosition then
         delay(math.random(2, 8), function()
             local material = WorldUtil.getMaterialAtPosition(groundPosition)
-            if material == Enum.Material.Grass then
-                -- The NatureService will need a generic createPlant function
+            if material == Enum.Material.Grass or material == Enum.Material.Water then
+                -- The NatureService's generic createPlant function handles different plant types
                 local newPlantObject = NatureService.createPlant(groundPosition, self.model.Name)
                 if newPlantObject then
                     newPlantObject.genome = Genome.mutate(self.genome, plantGenomeTemplate, 0.1)

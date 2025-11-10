@@ -1,6 +1,4 @@
 --!strict
--- NPCService
--- Manages the spawning and updating of all NPCs.
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,11 +7,18 @@ local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local NPC = require(ServerScriptService.NPC)
 local TimeService = require(ServerScriptService.TimeService)
 
+--- Manages the lifecycle and societal progression of all NPCs.
+-- This service handles the spawning, updating, and social interactions (like breeding
+-- and knowledge sharing) of all NPC entities. It orchestrates their collective
+-- behavior and technological advancement.
 local NPCService = {}
 
 local activeNPCs = {} -- Holds all the active NPC objects
 local tribe = {} -- A simple table to represent the first tribe
 
+--- Procedurally generates a model for an NPC.
+-- @param spawnPosition Vector3 The world position where the NPC should be created.
+-- @return Model The fully constructed and welded NPC model.
 function NPCService.createNPC(spawnPosition)
     local npc = Instance.new("Model")
     npc.Name = "NPC"
@@ -74,6 +79,10 @@ function NPCService.createNPC(spawnPosition)
     return npc
 end
 
+--- Spawns a new NPC in a valid land-based location.
+-- The function searches for a suitable non-water location. If successful, it creates
+-- the NPC object and its model, adding it to the simulation and the main tribe.
+-- @return table? The new NPC object, or nil if no valid spawn location was found.
 function NPCService.spawnNPC()
     print("Attempting to spawn an NPC...")
 
@@ -111,9 +120,14 @@ function NPCService.spawnNPC()
         return npcObject
     else
         print("Failed to find a valid ground position for NPC after 50 attempts.")
+        return nil
     end
 end
 
+--- Initializes the NPCService.
+-- Spawns the initial "Adam and Eve" NPCs and connects the service's update
+-- loop to the global `TimeService` tick. This loop also handles societal
+-- logic like technological discovery and breeding.
 function NPCService.start()
     print("NPCService started")
     -- Spawn the first two humans

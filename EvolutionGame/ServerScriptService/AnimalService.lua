@@ -1,3 +1,5 @@
+--!strict
+
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -5,14 +7,26 @@ local WorldUtil = require(ReplicatedStorage.WorldUtil)
 local Animal = require(ServerScriptService.Animal)
 local TimeService = require(ServerScriptService.TimeService)
 
+--- Manages the lifecycle of all animals in the simulation.
+-- This service handles the creation, spawning, and updating of all animal entities.
+-- It maintains the list of active animals and connects their AI to the main game loop.
 local AnimalService = {}
 
-local activeAnimals = {} -- Holds all the active Animal objects
+-- Holds all the active Animal objects.
+local activeAnimals = {}
 
+--- Returns the list of all active animals.
+-- @return table A list containing all active Animal objects.
 function AnimalService.getActiveAnimals()
     return activeAnimals
 end
 
+--- Procedurally generates a model for a land animal based on its genome.
+-- The animal's appearance (size, body shape, presence of a snout) is determined
+-- by its genetic traits, creating visual diversity.
+-- @param spawnPosition Vector3 The world position where the animal should be created.
+-- @param genome table The animal's genome, used to define its physical characteristics.
+-- @return Model The fully constructed and welded animal model.
 function AnimalService.createLandAnimal(spawnPosition, genome)
     local animal = Instance.new("Model")
     animal.Name = "LandAnimal"
@@ -97,6 +111,9 @@ function AnimalService.createLandAnimal(spawnPosition, genome)
     return animal
 end
 
+--- Creates a model for a water-based animal.
+-- @param spawnPosition Vector3 The world position where the animal should be created.
+-- @return Model The fully constructed and welded water animal model.
 function AnimalService.createWaterAnimal(spawnPosition)
     local animal = Instance.new("Model")
     animal.Name = "WaterAnimal"
@@ -127,6 +144,11 @@ function AnimalService.createWaterAnimal(spawnPosition)
     return animal
 end
 
+--- Spawns a new animal in a valid location in the world.
+-- The function randomly decides whether to spawn a land or water animal, then
+-- searches for a suitable location. If successful, it creates the animal object
+-- and its model, and adds it to the simulation.
+-- @return table? The new Animal object, or nil if no valid spawn location was found.
 function AnimalService.spawnAnimal()
     local animalType = math.random(1, 2)
     local maxAttempts = 50
@@ -190,9 +212,13 @@ function AnimalService.spawnAnimal()
         end
     else
         print("Failed to find a valid location for animal after " .. maxAttempts .. " attempts.")
+        return nil
     end
 end
 
+--- Initializes the AnimalService.
+-- Spawns the initial population of animals and connects the service's update
+-- loop to the global `TimeService` tick.
 function AnimalService.start()
     print("AnimalService started")
     -- Spawn a mix of animals to start

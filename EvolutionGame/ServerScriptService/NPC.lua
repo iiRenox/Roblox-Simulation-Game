@@ -1,13 +1,18 @@
 --!strict
--- NPC Class
--- Manages the state, needs, and behavior of a single NPC, driven by knowledge.
 
 local ServerScriptService = game:GetService("ServerScriptService")
 local Pathfinding = require(ServerScriptService.Pathfinding)
 
+--- Manages the state, needs, and behavior of a single NPC.
+-- This class represents an individual Non-Player Character, handling their AI,
+-- needs (hunger, thirst), knowledge, and interactions with the environment.
+-- Unlike animals, NPC evolution is technological and social, not genetic.
 local NPC = {}
 NPC.__index = NPC
 
+--- Creates a new NPC instance.
+-- @param model Model The visual representation of the NPC in the workspace.
+-- @return table The new NPC object.
 function NPC.new(model)
     local self = setmetatable({}, NPC)
 
@@ -34,6 +39,8 @@ function NPC.new(model)
     return self
 end
 
+--- Moves the NPC to a specified destination using the Pathfinding service.
+-- @param destination Vector3 The target position to move to.
 function NPC:moveTo(destination)
     if self.isMoving then return end
     self.isMoving = true
@@ -44,6 +51,10 @@ function NPC:moveTo(destination)
     self.isMoving = false
 end
 
+--- Finds the nearest plant resource.
+-- Used for gathering food.
+-- @param activePlants table A list of all active plants in the simulation.
+-- @return table? The nearest plant object, or nil if none is found.
 function NPC:findNearestResource(activePlants)
     local nearestResource = nil
     local minDistance = math.huge
@@ -61,6 +72,25 @@ function NPC:findNearestResource(activePlants)
     return nearestResource
 end
 
+--- Handles the death of the NPC.
+-- Destroys the NPC's model and marks it for cleanup.
+-- @return string Returns "dead" to signal removal from the active list.
+function NPC:die()
+    if self.model then
+        self.model:Destroy()
+        self.model = nil
+    end
+    return "dead"
+end
+
+--- The main update loop for the NPC's AI and life cycle.
+-- This function is called on every simulation tick. It manages needs,
+-- and the state machine that drives the NPC's behavior.
+-- @param deltaTime number The time since the last update.
+-- @param activeNPCs table A list of all active NPCs.
+-- @param activePlants table A list of all active plants.
+-- @param spawnNPC function A function to call to spawn a new NPC (for breeding).
+-- @return string? "dead" if the NPC has died during the update, otherwise nil.
 function NPC:update(deltaTime, activeNPCs, activePlants, spawnNPC)
     self.age = self.age + deltaTime
     self.hunger = self.hunger + deltaTime * 0.1
@@ -85,14 +115,6 @@ function NPC:update(deltaTime, activeNPCs, activePlants, spawnNPC)
     else
         self.state = "Wandering"
     end
-
-function NPC:die()
-    if self.model then
-        self.model:Destroy()
-        self.model = nil
-    end
-    return "dead"
-end
 
     -- Handle actions based on state
     if self.state == "Gathering" then

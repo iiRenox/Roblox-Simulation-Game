@@ -1,3 +1,5 @@
+--!strict
+
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -6,12 +8,19 @@ local Tree = require(ServerScriptService.Tree)
 local Plant = require(ServerScriptService.Plant)
 local TimeService = require(ServerScriptService.TimeService)
 
+--- Manages the procedural generation of the world and the lifecycle of all flora.
+-- This service is responsible for creating the terrain, rivers, and all plant life
+-- (trees, bushes, flowers). It uses multiple layers of Perlin noise for realistic
+-- landscapes and connects to the TimeService to handle the growth and reproduction
+-- of plants over time.
 local NatureService = {}
 
 local natureFolder -- This will hold all the generated nature models
 local activeTrees = {} -- Holds all the active Tree objects
 local activePlants = {} -- Holds all the active Plant objects
 
+--- Returns the list of all active non-tree plants (bushes, flowers, etc.).
+-- @return table A list of all active Plant objects.
 function NatureService.getActivePlants()
     return activePlants
 end
@@ -28,6 +37,12 @@ local patchThreshold = 0.4 -- Defines sparse patch areas
 local flowerSmothness = 20
 local flowerThreshold = 0.7
 
+--- Generates the entire game world, including terrain, biomes, rivers, and flora.
+-- This is a multi-step process:
+-- 1. A height map is generated using multiple layers of Perlin noise.
+-- 2. Rivers are carved into the height map.
+-- 3. The terrain is rendered block by block based on the final height map data.
+-- 4. Trees, bushes, and other plants are spawned in appropriate locations.
 function NatureService.generateWorld()
     print("Starting world generation...")
     local terrain = workspace.Terrain
@@ -140,6 +155,10 @@ function NatureService.generateWorld()
     NatureService.generateUnderwaterPlants(xSize, zSize, seed)
 end
 
+--- Populates the world's underwater areas with seaweed.
+-- @param xSize number The width of the world grid.
+-- @param zSize number The depth of the world grid.
+-- @param seed number The random seed for Perlin noise.
 function NatureService.generateUnderwaterPlants(xSize, zSize, seed)
     for x = 1, xSize, 8 do
         for z = 1, zSize, 8 do
@@ -164,6 +183,10 @@ function NatureService.generateUnderwaterPlants(xSize, zSize, seed)
     end
 end
 
+--- Populates the world's grassy areas with bushes.
+-- @param xSize number The width of the world grid.
+-- @param zSize number The depth of the world grid.
+-- @param seed number The random seed for Perlin noise.
 function NatureService.generateBushes(xSize, zSize, seed)
     for x = 1, xSize, 6 do
         for z = 1, zSize, 6 do
@@ -188,6 +211,10 @@ function NatureService.generateBushes(xSize, zSize, seed)
     end
 end
 
+--- Populates the world's grassy areas with flowers.
+-- @param xSize number The width of the world grid.
+-- @param zSize number The depth of the world grid.
+-- @param seed number The random seed for Perlin noise.
 function NatureService.generateFlowers(xSize, zSize, seed)
     for x = 1, xSize, 4 do
         for z = 1, zSize, 4 do
@@ -212,6 +239,11 @@ function NatureService.generateFlowers(xSize, zSize, seed)
     end
 end
 
+--- Spawns the initial "primordial" trees to begin the simulation.
+-- These trees will then grow and reproduce on their own.
+-- @param xSize number The width of the world grid.
+-- @param zSize number The depth of the world grid.
+-- @param seed number The random seed.
 function NatureService.generateTrees(xSize, zSize, seed)
     -- Spawn a few primordial saplings to start the simulation
     local numPrimordialTrees = 15
@@ -229,6 +261,11 @@ function NatureService.generateTrees(xSize, zSize, seed)
     end
 end
 
+--- Initializes the NatureService.
+-- This function runs the world generation in a separate coroutine so it doesn't
+-- block the main game thread. It also connects the plant lifecycle updates to the
+-- global `TimeService` tick.
+-- @return Event A BindableEvent that fires when world generation is complete.
 function NatureService.start()
     print("NatureService started")
     local onFinished = Instance.new("BindableEvent")
@@ -285,6 +322,12 @@ function NatureService.start()
     return onFinished.Event
 end
 
+--- Carves river paths into the pre-generated height map.
+-- It works by finding high-elevation points and then carving a path downwards
+-- towards the sea level by always moving to the lowest neighboring point.
+-- @param heightMap table The 2D array of height data.
+-- @param xSize number The width of the height map.
+-- @param zSize number The depth of the height map.
 function NatureService.generateRivers(heightMap, xSize, zSize)
     local seaLevel = 0
     local numRivers = 15
@@ -339,10 +382,17 @@ function NatureService.generateRivers(heightMap, xSize, zSize)
     end
 end
 
+--- Creates a new tree and adds it to the simulation.
+-- @param position Vector3 The world position to spawn the tree at.
+-- @return table The newly created Tree object.
 function NatureService.createTree(position)
     return NatureService.createRegularTree(position)
 end
 
+--- Creates a new non-tree plant (bush, flower, etc.) and adds it to the simulation.
+-- @param position Vector3 The world position to spawn the plant at.
+-- @param plantType string The type of plant to create ("Bush", "Flower", "Seaweed").
+-- @return table? The newly created Plant object, or nil if the type is invalid.
 function NatureService.createPlant(position, plantType)
     local model
     if plantType == "Bush" then
@@ -360,6 +410,9 @@ function NatureService.createPlant(position, plantType)
     return plantObject
 end
 
+--- Creates a model for a seaweed plant.
+-- @param position Vector3 The position to create the model at.
+-- @return Model The generated seaweed model.
 function NatureService.createSeaweed(position)
     local seaweed = Instance.new("Model")
     seaweed.Name = "Seaweed"
@@ -379,6 +432,9 @@ function NatureService.createSeaweed(position)
     return seaweed
 end
 
+--- Creates a model for a bush plant.
+-- @param position Vector3 The position to create the model at.
+-- @return Model The generated bush model.
 function NatureService.createBush(position)
     local bush = Instance.new("Model")
     bush.Name = "Bush"
@@ -411,6 +467,9 @@ function NatureService.createBush(position)
     return bush
 end
 
+--- Creates a model for a flower plant.
+-- @param position Vector3 The position to create the model at.
+-- @return Model The generated flower model.
 function NatureService.createFlower(position)
     local flower = Instance.new("Model")
     flower.Name = "Flower"
@@ -437,6 +496,11 @@ function NatureService.createFlower(position)
     return flower
 end
 
+--- Creates a complex, organic-looking tree model using a recursive algorithm.
+-- The tree features a gnarled, multi-part trunk and fractal-based branches,
+-- resulting in a natural and varied appearance.
+-- @param position Vector3 The position to create the model at.
+-- @return table The newly created Tree object.
 function NatureService.createRegularTree(position)
     local tree = Instance.new("Model")
     tree.Name = "Tree"
@@ -573,32 +637,6 @@ function NatureService.createRegularTree(position)
 
     -- The Tree class will handle the initial scaling
     return treeObject
-end
-
-function NatureService.createFlower(position)
-    local flower = Instance.new("Model")
-    flower.Name = "Flower"
-    flower.Parent = natureFolder
-
-    local stem = Instance.new("Part")
-    stem.Name = "Stem"
-    stem.Parent = flower
-    stem.Size = Vector3.new(0.2, 1, 0.2)
-    stem.Position = position + Vector3.new(0, 0.5, 0)
-    stem.Color = Color3.fromRGB(0, 100, 0)
-    stem.Anchored = true
-
-    local petal = Instance.new("Part")
-    petal.Name = "Petal"
-    petal.Parent = flower
-    petal.Shape = Enum.PartType.Ball
-    petal.Size = Vector3.new(1, 1, 1)
-    petal.Position = stem.Position + Vector3.new(0, 0.5, 0)
-    petal.Color = Color3.fromHSV(math.random(), 1, 1)
-    petal.Anchored = true
-
-    flower.PrimaryPart = stem
-    return flower
 end
 
 return NatureService

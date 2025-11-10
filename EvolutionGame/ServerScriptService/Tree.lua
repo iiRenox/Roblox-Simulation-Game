@@ -1,14 +1,16 @@
 --!strict
--- Tree Class
--- Manages the state and behavior of a single tree, driven by its genome.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Genome = require(ReplicatedStorage.Genome)
 
+--- Manages the state and behavior of a single tree, driven by its genome.
+-- This class represents an individual tree in the simulation, handling its entire
+-- lifecycle from a sapling to a mature, reproducing tree. Its growth, appearance,
+-- and reproductive strategies are all determined by its genetic data.
 local Tree = {}
 Tree.__index = Tree
 
--- The genetic blueprint for all trees, based on "Pillar 1"
+-- The genetic blueprint for all trees
 local treeGenomeTemplate = {
     -- Size & Structure
     maxHeight = { type = "number", defaultValue = 15, min = 10, max = 80 },
@@ -31,6 +33,9 @@ local treeGenomeTemplate = {
     toxicity = { type = "number", defaultValue = 0, min = 0, max = 1 },
 }
 
+--- Creates a new Tree instance.
+-- @param model Model The visual representation of the tree in the workspace.
+-- @return table The new Tree object.
 function Tree.new(model)
     local self = setmetatable({}, Tree)
 
@@ -47,6 +52,10 @@ function Tree.new(model)
     return self
 end
 
+--- Scales the tree model from its base, ensuring it grows upwards.
+-- This custom scaling function resizes and repositions each part relative to the
+-- model's pivot point at the base, preventing the tree from scaling into the ground.
+-- @param scale number The factor by which to scale the tree.
 function Tree:scaleUpwards(scale)
     local originalPivot = self.model:GetPivot()
     local basePosition = originalPivot.Position
@@ -63,6 +72,11 @@ function Tree:scaleUpwards(scale)
     end
 end
 
+--- The main update loop for the tree's life cycle.
+-- This function is called on every simulation tick. It handles aging and the
+-- transition from a sapling to a mature tree.
+-- @param deltaTime number The time since the last update.
+-- @return string? "dead" if the tree has died of old age, otherwise nil.
 function Tree:grow(deltaTime)
     self.age = self.age + deltaTime
 
@@ -85,6 +99,9 @@ function Tree:grow(deltaTime)
     end
 end
 
+--- Handles the reproduction of the tree.
+-- Once mature, a tree will periodically drop seeds in a radius determined by its
+-- canopy width. If a seed lands in a viable location, a new tree will sprout.
 function Tree:reproduce()
     if self.growthState ~= "Mature" or (os.clock() - self.lastReproduction) < (self.genome.reproductiveRate * 10) then
         return

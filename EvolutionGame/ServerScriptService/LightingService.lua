@@ -1,8 +1,19 @@
+--!strict
+
 local ServerScriptService = game:GetService("ServerScriptService")
 local TimeService = require(ServerScriptService.TimeService)
 
+--- Manages the game's visual and atmospheric effects.
+-- This service is responsible for configuring the game's lighting, sky, atmosphere,
+-- and post-processing effects to create a dynamic and visually appealing environment.
+-- It also synchronizes the day/night cycle with the global `TimeService`.
 local LightingService = {}
 
+--- Sets up the initial lighting and atmospheric conditions for the world.
+-- This function configures properties of the Lighting service, creates and tunes
+-- post-processing effects like Bloom and ColorCorrection, and establishes a
+-- dynamic atmosphere. It also connects to the TimeService's tick to drive the
+-- day/night cycle.
 function LightingService.setup()
     local lighting = game:GetService("Lighting")
 
