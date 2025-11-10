@@ -26,17 +26,18 @@ function NatureService.getActivePlants()
 end
 
 -- Biome definitions
+-- Biome definitions with secondary and tertiary materials for texture
 local BIOMES = {
-	JUNGLE = { material = Enum.Material.Grass, foliageColor = Color3.fromRGB(34, 139, 34), density = 0.8 },
-	DESERT = { material = Enum.Material.Sand, foliageColor = Color3.fromRGB(210, 180, 140), density = 0.05 },
-	FOREST = { material = Enum.Material.Grass, foliageColor = Color3.fromRGB(46, 139, 87), density = 0.7 },
-	PLAINS = { material = Enum.Material.Grass, foliageColor = Color3.fromRGB(124, 252, 0), density = 0.2 },
-	SWAMP = { material = Enum.Material.Mud, foliageColor = Color3.fromRGB(85, 107, 47), density = 0.4 },
-	TUNDRA = { material = Enum.Material.Snow, foliageColor = Color3.fromRGB(240, 248, 255), density = 0.1 },
-	ARCTIC = { material = Enum.Material.Snow, foliageColor = Color3.fromRGB(255, 255, 255), density = 0.01 },
-	MOUNTAIN = { material = Enum.Material.Rock, foliageColor = Color3.fromRGB(139, 137, 137), density = 0.05 },
-	BEACH = { material = Enum.Material.Sand, foliageColor = Color3.fromRGB(250, 235, 215), density = 0.02 },
-	WATER = { material = Enum.Material.Water, foliageColor = Color3.fromRGB(0, 0, 139), density = 0.3 }
+	JUNGLE = { materials = {Enum.Material.Grass, Enum.Material.LeafyGrass, Enum.Material.Mud}, foliageColor = Color3.fromRGB(34, 139, 34), density = 0.8 },
+	DESERT = { materials = {Enum.Material.Sand, Enum.Material.Sandstone, Enum.Material.Rock}, foliageColor = Color3.fromRGB(210, 180, 140), density = 0.05 },
+	FOREST = { materials = {Enum.Material.Grass, Enum.Material.LeafyGrass, Enum.Material.Ground}, foliageColor = Color3.fromRGB(46, 139, 87), density = 0.7 },
+	PLAINS = { materials = {Enum.Material.Grass, Enum.Material.LeafyGrass, Enum.Material.Ground}, foliageColor = Color3.fromRGB(124, 252, 0), density = 0.2 },
+	SWAMP = { materials = {Enum.Material.Mud, Enum.Material.Water, Enum.Material.Grass}, foliageColor = Color3.fromRGB(85, 107, 47), density = 0.4 },
+	TUNDRA = { materials = {Enum.Material.Snow, Enum.Material.Ice, Enum.Material.Rock}, foliageColor = Color3.fromRGB(240, 248, 255), density = 0.1 },
+	ARCTIC = { materials = {Enum.Material.Snow, Enum.Material.Ice, Enum.Material.Glacier}, foliageColor = Color3.fromRGB(255, 255, 255), density = 0.01 },
+	MOUNTAIN = { materials = {Enum.Material.Rock, Enum.Material.Basalt, Enum.Material.Snow}, foliageColor = Color3.fromRGB(139, 137, 137), density = 0.05 },
+	BEACH = { materials = {Enum.Material.Sand, Enum.Material.Rock, Enum.Material.Pavement}, foliageColor = Color3.fromRGB(250, 235, 215), density = 0.02 },
+	WATER = { materials = {Enum.Material.Water, Enum.Material.Sand, Enum.Material.Rock}, foliageColor = Color3.fromRGB(0, 0, 139), density = 0.3 }
 }
 
 --- Determines the biome for a given location based on its elevation, temperature, and moisture.
@@ -102,6 +103,7 @@ function NatureService.generateWorld()
 	-- Biome noise parameters
 	local temperatureSmothness = 1200
 	local moistureSmothness = 900
+	local textureSmothness = 25
 
 	-- Create maps to store the generated data
 	local heightMap = {}
@@ -153,7 +155,16 @@ function NatureService.generateWorld()
 
 			-- Determine the biome and material
 			local biome = getBiome(y, temperatureMap[x][z], moistureMap[x][z])
-			local material = biome.material
+			local textureNoise = (math.noise(worldX / textureSmothness, worldZ / textureSmothness, seed + 15) + 1) / 2
+
+			local material
+			if textureNoise > 0.8 then
+				material = biome.materials[3] or biome.materials[1]
+			elseif textureNoise > 0.6 then
+				material = biome.materials[2] or biome.materials[1]
+			else
+				material = biome.materials[1]
+			end
 
 			-- Define the terrain block (column)
 			local size = Vector3.new(4, y - baseHeight, 4)
@@ -181,7 +192,48 @@ function NatureService.generateWorld()
 	NatureService.generateOres(xSize, zSize, seed)
 	print("Ore generation complete.")
 
+	print("Generating rock formations...")
+	NatureService.generateRockFormations(xSize, zSize, seed)
+	print("Rock formation generation complete.")
+
 	print("World generation finished successfully.")
+end
+
+--- Generates small, decorative rock formations in appropriate biomes.
+-- @param xSize number The width of the world grid.
+-- @param zSize number The depth of the world grid.
+-- @param seed number The random seed for Perlin noise.
+function NatureService.generateRockFormations(xSize, zSize, seed)
+	local rockSmothness = 30
+	local rockThreshold = 0.75
+	for x = 1, xSize, 10 do
+		for z = 1, zSize, 10 do
+			local worldX = (x - xSize / 2) * 4
+			local worldZ = (z - zSize / 2) * 4
+
+			local rockNoise = (math.noise(worldX / rockSmothness, worldZ / rockSmothness, seed + 16) + 1) / 2
+
+			if rockNoise > rockThreshold then
+				local groundPosition = WorldUtil.getGroundPosition(worldX, worldZ)
+				if groundPosition then
+					local material = WorldUtil.getMaterialAtPosition(groundPosition)
+					if material == Enum.Material.Grass or material == Enum.Material.Sand then
+						local rock = Instance.new("Part")
+						local size = math.random(3, 7)
+						rock.Name = "RockFormation"
+						rock.Shape = Enum.PartType.Ball
+						rock.Size = Vector3.new(size, size, size)
+						rock.Position = groundPosition + Vector3.new(0, size/2, 0)
+						rock.Material = Enum.Material.Rock
+						rock.Color = Color3.fromRGB(139, 137, 137)
+						rock.Anchored = true
+						rock.Parent = natureFolder
+					end
+				end
+			end
+		end
+		if x % 32 == 0 then task.wait() end
+	end
 end
 
 --- Generates volcanoes on the heightmap.

@@ -40,7 +40,9 @@ function Plant.new(model)
     self.age = 0
     self.lastReproduction = 0
 
-    self.model:ScaleTo(1)
+    if self.model then
+        self.model:ScaleTo(1)
+    end
 
     return self
 end
@@ -101,7 +103,7 @@ function Plant:reproduce()
                 -- The NatureService's generic createPlant function handles different plant types
                 local newPlantObject = NatureService.createPlant(groundPosition, self.model.Name)
                 if newPlantObject then
-                    newPlantObject.genome = Genome.mutate(self.genome, plantGenomeTemplate, 0.1)
+                    newPlantObject.genome = Genome.mutate(self.genome, plantGenomeTemplate)
                 end
             end
         end)
