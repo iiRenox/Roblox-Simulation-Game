@@ -100,7 +100,15 @@ function Animal:eat(food)
         self.hunger = self.hunger - food.genome.nutritionalValue
     end
     self.state = "Idle"
-    food.model:Destroy() -- The food is consumed
+    food:die() -- The food is consumed
+end
+
+function Animal:die()
+    if self.model then
+        self.model:Destroy()
+        self.model = nil
+    end
+    return "dead"
 end
 
 function Animal:findMate(activeAnimals)
@@ -145,8 +153,7 @@ function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
 
     if self.hunger > 100 then
         print("An animal has starved to death.")
-        self.model:Destroy()
-        return "dead"
+        return self:die()
     end
 
     self:grow(deltaTime)
@@ -176,7 +183,7 @@ function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
         end
     elseif self.state == "Breeding" then
         local mate = self:findMate(activeAnimals)
-        if mate then
+        if mate and mate.model and mate.model.PrimaryPart then
             self:moveTo(mate.model.PrimaryPart.Position)
             if (self.model.PrimaryPart.Position - mate.model.PrimaryPart.Position).Magnitude < 10 then
                 self:breedWith(mate, spawnAnimal)
@@ -190,7 +197,7 @@ function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
     elseif self.state == "Idle" then
         if self.genome.sociality == "Herd" then
             local ally = self:findNearestAlly(activeAnimals)
-            if ally then
+            if ally and ally.model and ally.model.PrimaryPart then
                 -- Move towards the ally to form a herd
                 self:moveTo(ally.model.PrimaryPart.Position)
             else

@@ -122,9 +122,12 @@ function NPCService.start()
 
     -- Connect to the game loop
     TimeService.getTick():Connect(function(deltaTime, season)
+        local NatureService = require(ServerScriptService.NatureService)
+        local activePlants = NatureService.getActivePlants()
+
         for i = #activeNPCs, 1, -1 do
             local npc = activeNPCs[i]
-            local status = npc:update(deltaTime, activeNPCs, NPCService.spawnNPC)
+            local status = npc:update(deltaTime, activeNPCs, activePlants, NPCService.spawnNPC)
 
             if status == "dead" then
                 -- Also remove from tribe

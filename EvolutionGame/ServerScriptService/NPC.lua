@@ -44,19 +44,16 @@ function NPC:moveTo(destination)
     self.isMoving = false
 end
 
-function NPC:findNearestResource(resourceName)
+function NPC:findNearestResource(activePlants)
     local nearestResource = nil
     local minDistance = math.huge
 
-    local searchFolder = workspace.Nature -- For now, all resources are in Nature
-    if searchFolder then
-        for _, child in ipairs(searchFolder:GetChildren()) do
-            if child.Name == resourceName then
-                local distance = (self.model.PrimaryPart.Position - child.PrimaryPart.Position).Magnitude
-                if distance < minDistance then
-                    minDistance = distance
-                    nearestResource = child
-                end
+    for _, plant in ipairs(activePlants) do
+        if plant and plant.model and plant.model.PrimaryPart then
+            local distance = (self.model.PrimaryPart.Position - plant.model.PrimaryPart.Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearestResource = plant
             end
         end
     end
@@ -64,15 +61,14 @@ function NPC:findNearestResource(resourceName)
     return nearestResource
 end
 
-function NPC:update(deltaTime, activeNPCs, spawnNPC)
+function NPC:update(deltaTime, activeNPCs, activePlants, spawnNPC)
     self.age = self.age + deltaTime
     self.hunger = self.hunger + deltaTime * 0.1
     self.thirst = self.thirst + deltaTime * 0.15
 
     if self.hunger > 100 then
         print("An NPC has starved to death.")
-        self.model:Destroy()
-        return "dead"
+        return self:die()
     end
 
     -- State machine driven by needs
@@ -90,14 +86,22 @@ function NPC:update(deltaTime, activeNPCs, spawnNPC)
         self.state = "Wandering"
     end
 
+function NPC:die()
+    if self.model then
+        self.model:Destroy()
+        self.model = nil
+    end
+    return "dead"
+end
+
     -- Handle actions based on state
     if self.state == "Gathering" then
-        local plant = self:findNearestResource("Bush")
+        local plant = self:findNearestResource(activePlants)
         if plant then
-            self:moveTo(plant.PrimaryPart.Position)
-            if (self.model.PrimaryPart.Position - plant.PrimaryPart.Position).Magnitude < 10 then
-                self.hunger = 0
-                plant:Destroy()
+            self:moveTo(plant.model.PrimaryPart.Position)
+            if (self.model.PrimaryPart.Position - plant.model.PrimaryPart.Position).Magnitude < 10 then
+                self.hunger = self.hunger - plant.genome.nutritionalValue
+                plant:die()
             end
         else
             -- Wander to search for food

@@ -37,12 +37,19 @@ function Plant.new(model)
     return self
 end
 
+function Plant:die()
+    if self.model then
+        self.model:Destroy()
+        self.model = nil
+    end
+    return "dead"
+end
+
 function Plant:grow(deltaTime)
     self.age = self.age + deltaTime
 
     if self.age > self.genome.lifespan then
-        self.model:Destroy()
-        return "dead"
+        return self:die()
     end
 
     if self.model:GetScale() < self.genome.maxSize then

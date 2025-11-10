@@ -13,33 +13,66 @@ function AnimalService.getActiveAnimals()
     return activeAnimals
 end
 
-function AnimalService.createLandAnimal(spawnPosition)
+function AnimalService.createLandAnimal(spawnPosition, genome)
     local animal = Instance.new("Model")
     animal.Name = "LandAnimal"
 
+    -- Base color variation
+    local baseColor = Color3.fromHSV(math.random(), 0.6, 0.8)
+
+    -- Archetype generation based on genome
+    local torsoSize
+    local headSize
+    local snout
+
+    if genome.dietType > 0.5 then -- Carnivore (Wolf-like)
+        torsoSize = Vector3.new(genome.size * 0.8, genome.size * 0.4, genome.size * 1.2)
+        headSize = Vector3.new(genome.size * 0.4, genome.size * 0.4, genome.size * 0.4)
+        snout = true
+    elseif genome.size > 10 then -- Large Herbivore (Elephant-like)
+        torsoSize = Vector3.new(genome.size, genome.size * 1.2, genome.size * 1.5)
+        headSize = Vector3.new(genome.size * 0.5, genome.size * 0.5, genome.size * 0.5)
+    else -- Small Herbivore (Bunny-like)
+        torsoSize = Vector3.new(genome.size * 0.6, genome.size, genome.size * 0.8)
+        headSize = Vector3.new(genome.size * 0.3, genome.size * 0.3, genome.size * 0.3)
+    end
+
     local torso = Instance.new("Part")
     torso.Name = "Torso"
-    torso.Size = Vector3.new(4, 2, 6)
-    torso.Color = Color3.fromRGB(150, 75, 0)
+    torso.Size = torsoSize
+    torso.Color = baseColor
     torso.Parent = animal
 
     local head = Instance.new("Part")
     head.Name = "Head"
-    head.Size = Vector3.new(2, 2, 2)
-    head.Position = Vector3.new(0, 1, -4)
-    head.Color = Color3.fromRGB(150, 75, 0)
+    head.Size = headSize
+    head.Position = Vector3.new(0, torsoSize.Y / 2, -torsoSize.Z / 2 - headSize.Z / 2)
+    head.Color = baseColor
     head.Parent = animal
     local weldHead = Instance.new("WeldConstraint")
     weldHead.Part0 = torso
     weldHead.Part1 = head
     weldHead.Parent = torso
 
-    local legSize = Vector3.new(1, 2, 1)
+    if snout then
+        local snoutPart = Instance.new("Part")
+        snoutPart.Name = "Snout"
+        snoutPart.Size = Vector3.new(headSize.X * 0.5, headSize.Y * 0.5, headSize.Z)
+        snoutPart.Position = head.Position + Vector3.new(0, 0, -headSize.Z / 2)
+        snoutPart.Color = baseColor
+        snoutPart.Parent = animal
+        local weldSnout = Instance.new("WeldConstraint")
+        weldSnout.Part0 = head
+        weldSnout.Part1 = snoutPart
+        weldSnout.Parent = head
+    end
+
+    local legSize = Vector3.new(genome.size * 0.2, genome.size * 0.5, genome.size * 0.2)
     local legPositions = {
-        Vector3.new(1.5, -2, 2),
-        Vector3.new(-1.5, -2, 2),
-        Vector3.new(1.5, -2, -2),
-        Vector3.new(-1.5, -2, -2)
+        Vector3.new(torsoSize.X/2, -torsoSize.Y/2, torsoSize.Z/2),
+        Vector3.new(-torsoSize.X/2, -torsoSize.Y/2, torsoSize.Z/2),
+        Vector3.new(torsoSize.X/2, -torsoSize.Y/2, -torsoSize.Z/2),
+        Vector3.new(-torsoSize.X/2, -torsoSize.Y/2, -torsoSize.Z/2)
     }
 
     for i, pos in ipairs(legPositions) do
@@ -47,7 +80,7 @@ function AnimalService.createLandAnimal(spawnPosition)
         leg.Name = "Leg" .. i
         leg.Size = legSize
         leg.Position = pos
-        leg.Color = Color3.fromRGB(150, 75, 0)
+        leg.Color = baseColor
         leg.Parent = animal
         local weldLeg = Instance.new("WeldConstraint")
         weldLeg.Part0 = torso
@@ -124,10 +157,13 @@ function AnimalService.spawnAnimal()
     if positionFound then
         if animalType == 1 then
             local spawnPosition = groundPosition + Vector3.new(0, 4, 0)
-            local animalModel = AnimalService.createLandAnimal(spawnPosition)
+
+            local animalObject = Animal.new(nil) -- Create the object first to get the genome
+            local animalModel = AnimalService.createLandAnimal(spawnPosition, animalObject.genome)
+            animalObject.model = animalModel
+            animalObject.humanoid = animalModel:FindFirstChildOfClass("Humanoid")
             animalModel.Parent = workspace
 
-            local animalObject = Animal.new(animalModel)
             table.insert(activeAnimals, animalObject)
 
             -- Apply genetic traits
