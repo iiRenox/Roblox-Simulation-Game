@@ -6,6 +6,16 @@
 -- startup sequence of the game.
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Create communication channels for client-server interaction
+local toggleSimulationEvent = Instance.new("RemoteEvent")
+toggleSimulationEvent.Name = "ToggleSimulation"
+toggleSimulationEvent.Parent = ReplicatedStorage
+
+local requestDataFunction = Instance.new("RemoteFunction")
+requestDataFunction.Name = "RequestSimulationData"
+requestDataFunction.Parent = ReplicatedStorage
 
 -- Require all the major services
 local NatureService = require(ServerScriptService.NatureService)
@@ -13,10 +23,12 @@ local AnimalService = require(ServerScriptService.AnimalService)
 local NPCService = require(ServerScriptService.NPCService)
 local LightingService = require(ServerScriptService.LightingService)
 local TimeService = require(ServerScriptService.TimeService)
+local DataService = require(ServerScriptService.DataService)
 
 -- Initialize services
 LightingService.setup()
 TimeService.start()
+DataService.start()
 
 -- Start world generation and wait for it to complete
 local onNatureFinished = NatureService.start()

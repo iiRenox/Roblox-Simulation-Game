@@ -13,6 +13,7 @@ local timeOfDay = 0 -- 0 to 24 hours
 local day = 1
 local season = "Spring" -- Spring, Summer, Autumn, Winter
 local daysPerSeason = 2 -- How many in-game days each season lasts
+local isPaused = false
 
 local speedTiers = {0.1, 1, 10, 100}
 local currentSpeedIndex = 2 -- Start at 1x speed
@@ -50,8 +51,15 @@ function TimeService.start()
         TimeService.changeSpeed()
     end)
 
+    ReplicatedStorage.ToggleSimulation.OnServerEvent:Connect(function()
+        isPaused = not isPaused
+        print("Simulation is now", isPaused and "paused" or "resumed")
+    end)
+
     -- Connect to the Heartbeat event, which fires every frame
     RunService.Heartbeat:Connect(function(deltaTime)
+        if isPaused then return end -- Halt the simulation if paused
+
         local scaledDeltaTime = deltaTime * simulationSpeed
 
         -- Increment the time of day
@@ -71,8 +79,8 @@ function TimeService.start()
             end
         end
 
-        -- Fire the tick event, passing the scaled delta time and the current season
-        onTick:Fire(scaledDeltaTime, season)
+        -- Fire the tick event, passing the scaled delta time, the current season, and the day
+        onTick:Fire(scaledDeltaTime, season, day)
     end)
 end
 

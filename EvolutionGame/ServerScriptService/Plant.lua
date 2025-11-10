@@ -11,18 +11,22 @@ Plant.__index = Plant
 
 -- The genetic blueprint for all simple plants
 local plantGenomeTemplate = {
-    -- Size & Structure
-    maxSize = { type = "number", defaultValue = 5, min = 2, max = 10 },
-    -- Energy & Resources
-    nutritionalValue = { type = "number", defaultValue = 10, min = 5, max = 20 },
-    -- Lifespan & Growth
-    growthRate = { type = "number", defaultValue = 0.5, min = 0.1, max = 2 },
-    lifespan = { type = "number", defaultValue = 50, min = 20, max = 100 },
-    -- Reproduction
-    seedSpread = { type = "number", defaultValue = 10, min = 5, max = 20 },
-    reproductiveRate = { type = "number", defaultValue = 10, min = 5, max = 20 },
-    -- Defense
-    toxicity = { type = "number", defaultValue = 0, min = 0, max = 1 },
+	-- Core Genetic Traits
+	mutationChance = { type = "number", defaultValue = 0.02, min = 0.0, max = 0.1 },
+	inheritanceAllele = { type = "allele", defaultValue = "average" },
+	-- Size & Structure
+	maxSize = { type = "number", defaultValue = 5, min = 2, max = 10 },
+	-- Energy & Resources
+	nutritionalValue = { type = "number", defaultValue = 10, min = 5, max = 20 },
+	-- Lifespan & Growth
+	growthRate = { type = "number", defaultValue = 0.5, min = 0.1, max = 2 },
+	lifespan = { type = "number", defaultValue = 50, min = 20, max = 100 },
+	-- Reproduction
+	seedSpread = { type = "number", defaultValue = 10, min = 5, max = 20 },
+	reproductiveRate = { type = "number", defaultValue = 10, min = 5, max = 20 },
+	-- Defense
+	toxicity = { type = "number", defaultValue = 0, min = 0, max = 1 },
+	thorniness = { type = "number", defaultValue = 0, min = 0, max = 1 },
 }
 
 --- Creates a new Plant instance.

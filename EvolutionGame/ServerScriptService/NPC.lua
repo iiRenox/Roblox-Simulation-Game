@@ -1,14 +1,31 @@
 --!strict
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Genome = require(ReplicatedStorage.Genome)
 local Pathfinding = require(ServerScriptService.Pathfinding)
 
 --- Manages the state, needs, and behavior of a single NPC.
 -- This class represents an individual Non-Player Character, handling their AI,
 -- needs (hunger, thirst), knowledge, and interactions with the environment.
--- Unlike animals, NPC evolution is technological and social, not genetic.
+-- NPC evolution is primarily technological and social, with subtle genetic influences.
 local NPC = {}
 NPC.__index = NPC
+
+-- Defines the genetic structure for all NPCs (Humans)
+local npcGenomeTemplate = {
+	-- Core Genetic Traits
+	mutationChance = { type = "number", defaultValue = 0.01, min = 0.0, max = 0.05 }, -- Lower than animals
+	inheritanceAllele = { type = "allele", defaultValue = "average" },
+	-- Physical Attributes (Internal)
+	metabolism = { type = "number", defaultValue = 1, min = 0.5, max = 1.5 }, -- Hunger/thirst rate multiplier
+	diseaseResistance = { type = "number", defaultValue = 0.5, min = 0, max = 1 },
+	lifespan = { type = "number", defaultValue = 200, min = 150, max = 300 },
+	strength = { type = "number", defaultValue = 10, min = 5, max = 20 },
+	endurance = { type = "number", defaultValue = 10, min = 5, max = 20 },
+	-- Reproduction
+	childAmount = { type = "number", defaultValue = 1, min = 1, max = 3 },
+}
 
 --- Creates a new NPC instance.
 -- @param model Model The visual representation of the NPC in the workspace.
@@ -18,6 +35,7 @@ function NPC.new(model)
 
     self.model = model
     self.humanoid = model:FindFirstChildOfClass("Humanoid")
+    self.genome = Genome.create(npcGenomeTemplate)
 
     -- Knowledge-based "evolution"
     self.knowledge = {
@@ -93,11 +111,16 @@ end
 -- @return string? "dead" if the NPC has died during the update, otherwise nil.
 function NPC:update(deltaTime, activeNPCs, activePlants, spawnNPC)
     self.age = self.age + deltaTime
-    self.hunger = self.hunger + deltaTime * 0.1
-    self.thirst = self.thirst + deltaTime * 0.15
+    self.hunger = self.hunger + (deltaTime * 0.1 * self.genome.metabolism)
+    self.thirst = self.thirst + (deltaTime * 0.15 * self.genome.metabolism)
 
     if self.hunger > 100 then
         print("An NPC has starved to death.")
+        return self:die()
+    end
+
+    if self.age > self.genome.lifespan then
+        print("An NPC has died of old age.")
         return self:die()
     end
 

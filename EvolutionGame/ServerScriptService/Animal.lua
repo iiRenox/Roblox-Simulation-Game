@@ -14,16 +14,23 @@ Animal.__index = Animal
 
 -- Defines the genetic structure for all animals.
 local animalGenomeTemplate = {
-    -- Physical Attributes
-    size = { type = "number", defaultValue = 5, min = 2, max = 15 },
-    speed = { type = "number", defaultValue = 20, min = 10, max = 40 },
-    -- Senses
-    eyesight = { type = "number", defaultValue = 100, min = 50, max = 200 },
-    smell = { type = "number", defaultValue = 150, min = 75, max = 250 },
-    -- Behavioral Genes
-    dietType = { type = "number", defaultValue = 0.1, min = 0, max = 1 }, -- 0=Herbivore, 1=Carnivore
-    sociality = { type = "string", defaultValue = "Solitary", possibleValues = {"Solitary", "Herd"} },
-    intelligence = { type = "number", defaultValue = 1, min = 1, max = 10 },
+	-- Core Genetic Traits
+	mutationChance = { type = "number", defaultValue = 0.02, min = 0.0, max = 0.1 },
+	inheritanceAllele = { type = "allele", defaultValue = "average" },
+	-- Physical Attributes
+	size = { type = "number", defaultValue = 5, min = 2, max = 15 },
+	speed = { type = "number", defaultValue = 20, min = 10, max = 40 },
+	energyStorage = { type = "number", defaultValue = 100, min = 50, max = 200 },
+	-- Senses
+	eyesight = { type = "number", defaultValue = 100, min = 50, max = 200 },
+	smell = { type = "number", defaultValue = 150, min = 75, max = 250 },
+	-- Behavioral Genes
+	dietType = { type = "number", defaultValue = 0.1, min = 0, max = 1 }, -- 0=Herbivore, 1=Carnivore
+	sociality = { type = "string", defaultValue = "Solitary", possibleValues = { "Solitary", "Herd" } },
+	intelligence = { type = "number", defaultValue = 1, min = 1, max = 10 },
+	-- Combat/Defense Genes
+	attack = { type = "number", defaultValue = 5, min = 1, max = 20 },
+	defense = { type = "number", defaultValue = 5, min = 1, max = 20 },
 }
 
 --- Creates a new Animal instance.
@@ -107,19 +114,39 @@ function Animal:findFood(activeAnimals, activePlants)
 end
 
 --- Consumes a food source to reduce hunger.
--- The amount of hunger restored depends on the type of food.
+--- Consumes a food source to reduce hunger, if possible.
+-- The success of eating is determined by comparing genetic traits. Carnivores must have a
+-- higher `attack` than their prey's `defense`. Herbivores must be able to overcome a
+-- plant's `toxicity` or `thorniness`.
 -- @param food table The plant or animal object to be eaten.
 function Animal:eat(food)
-    if not food or not food.model or not food.model.PrimaryPart then return end
+	if not food or not food.model or not food.model.PrimaryPart then return end
+	local foodIsAnimal = food.model.Name == "LandAnimal" or food.model.Name == "WaterAnimal" -- A more reliable check might be needed
 
-    print("An animal is eating a " .. food.model.Name)
-    if food:IsA("Animal") then
-        self.hunger = self.hunger - food.genome.size -- Simple nutrition for now
-    else
-        self.hunger = self.hunger - food.genome.nutritionalValue
-    end
-    self.state = "Idle"
-    food:die() -- The food is consumed
+	if foodIsAnimal then -- Carnivore interaction
+		if self.genome.attack > food.genome.defense then
+			print("A predator has successfully hunted prey!")
+			self.hunger -= food.genome.size -- Nutrition from size
+			food:die()
+		else
+			print("Prey has escaped from a predator!")
+		end
+	else -- Herbivore interaction
+		-- An implicit "eating strength" is derived from size.
+		local eatingStrength = self.genome.size
+		if eatingStrength > (food.genome.thorniness * 20) and eatingStrength > (food.genome.toxicity * 20) then
+			print("An animal is eating a " .. food.model.Name)
+			self.hunger -= food.genome.nutritionalValue
+			-- Eating toxic plants has a negative side effect
+			if food.genome.toxicity > 0.5 then
+				self.hunger += food.genome.toxicity * 10 -- Get sick, become hungry again faster
+			end
+			food:die()
+		else
+			print("An animal failed to eat a thorny or toxic plant.")
+		end
+	end
+	self.state = "Idle"
 end
 
 --- Handles the death of the animal.

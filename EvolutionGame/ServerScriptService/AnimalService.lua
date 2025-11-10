@@ -22,93 +22,108 @@ function AnimalService.getActiveAnimals()
 end
 
 --- Procedurally generates a model for a land animal based on its genome.
--- The animal's appearance (size, body shape, presence of a snout) is determined
--- by its genetic traits, creating visual diversity.
+-- The animal's appearance (size, color, body shape, appendages) is determined
+-- by its genetic traits, creating significant visual diversity.
 -- @param spawnPosition Vector3 The world position where the animal should be created.
 -- @param genome table The animal's genome, used to define its physical characteristics.
 -- @return Model The fully constructed and welded animal model.
 function AnimalService.createLandAnimal(spawnPosition, genome)
-    local animal = Instance.new("Model")
-    animal.Name = "LandAnimal"
+	local animal = Instance.new("Model")
+	animal.Name = "LandAnimal"
 
-    -- Base color variation
-    local baseColor = Color3.fromHSV(math.random(), 0.6, 0.8)
+	-- Color is determined by diet and a random hue
+	local dietHue = if genome.dietType > 0.5 then 0 else 0.3 -- Carnivores are reddish, Herbivores are greenish
+	local baseColor = Color3.fromHSV(dietHue + math.random(-5, 5)/100, 0.7, 0.8)
 
-    -- Archetype generation based on genome
-    local torsoSize
-    local headSize
-    local snout
+	-- *** BODY SHAPE ***
+	-- Torso size is based on energy storage and overall size
+	local torsoWidth = (genome.energyStorage / 150) * genome.size
+	local torsoHeight = (genome.size / 10) * genome.size
+	local torsoLength = (genome.size / 8) * genome.size
+	local torsoSize = Vector3.new(torsoWidth, torsoHeight, torsoLength)
 
-    if genome.dietType > 0.5 then -- Carnivore (Wolf-like)
-        torsoSize = Vector3.new(genome.size * 0.8, genome.size * 0.4, genome.size * 1.2)
-        headSize = Vector3.new(genome.size * 0.4, genome.size * 0.4, genome.size * 0.4)
-        snout = true
-    elseif genome.size > 10 then -- Large Herbivore (Elephant-like)
-        torsoSize = Vector3.new(genome.size, genome.size * 1.2, genome.size * 1.5)
-        headSize = Vector3.new(genome.size * 0.5, genome.size * 0.5, genome.size * 0.5)
-    else -- Small Herbivore (Bunny-like)
-        torsoSize = Vector3.new(genome.size * 0.6, genome.size, genome.size * 0.8)
-        headSize = Vector3.new(genome.size * 0.3, genome.size * 0.3, genome.size * 0.3)
-    end
+	local torso = Instance.new("Part")
+	torso.Name = "Torso"
+	torso.Size = torsoSize
+	torso.Color = baseColor
+	torso.Parent = animal
 
-    local torso = Instance.new("Part")
-    torso.Name = "Torso"
-    torso.Size = torsoSize
-    torso.Color = baseColor
-    torso.Parent = animal
+	-- *** HEAD SHAPE ***
+	local headSize = Vector3.new(genome.size * 0.4, genome.size * 0.4, genome.size * 0.4)
+	local head = Instance.new("Part")
+	head.Name = "Head"
+	head.Size = headSize
+	head.Position = Vector3.new(0, torsoSize.Y / 2, -torsoSize.Z / 2 - headSize.Z / 2)
+	head.Color = baseColor
+	head.Parent = animal
+	local weldHead = Instance.new("WeldConstraint")
+	weldHead.Part0 = torso
+	weldHead.Part1 = head
+	weldHead.Parent = torso
 
-    local head = Instance.new("Part")
-    head.Name = "Head"
-    head.Size = headSize
-    head.Position = Vector3.new(0, torsoSize.Y / 2, -torsoSize.Z / 2 - headSize.Z / 2)
-    head.Color = baseColor
-    head.Parent = animal
-    local weldHead = Instance.new("WeldConstraint")
-    weldHead.Part0 = torso
-    weldHead.Part1 = head
-    weldHead.Parent = torso
+	-- Carnivores get a snout, herbivores get a smaller mouth
+	if genome.dietType > 0.5 then
+		local snoutPart = Instance.new("Part")
+		snoutPart.Name = "Snout"
+		snoutPart.Size = Vector3.new(headSize.X * 0.6, headSize.Y * 0.6, headSize.Z * 1.2)
+		snoutPart.Position = head.Position + Vector3.new(0, 0, -headSize.Z / 2)
+		snoutPart.Color = baseColor
+		snoutPart.Parent = animal
+		local weldSnout = Instance.new("WeldConstraint")
+		weldSnout.Part0 = head
+		weldSnout.Part1 = snoutPart
+		weldSnout.Parent = head
+	end
 
-    if snout then
-        local snoutPart = Instance.new("Part")
-        snoutPart.Name = "Snout"
-        snoutPart.Size = Vector3.new(headSize.X * 0.5, headSize.Y * 0.5, headSize.Z)
-        snoutPart.Position = head.Position + Vector3.new(0, 0, -headSize.Z / 2)
-        snoutPart.Color = baseColor
-        snoutPart.Parent = animal
-        local weldSnout = Instance.new("WeldConstraint")
-        weldSnout.Part0 = head
-        weldSnout.Part1 = snoutPart
-        weldSnout.Parent = head
-    end
+	-- *** APPENDAGES ***
+	-- Horns/Antlers for defense
+	if genome.defense > 12 then
+		local horn = Instance.new("Part")
+		horn.Name = "Horn"
+		horn.Shape = Enum.PartType.Ball
+		horn.Size = Vector3.new(genome.defense * 0.2, genome.defense * 0.5, genome.defense * 0.2)
+		horn.Position = head.Position + Vector3.new(0, head.Size.Y/2, 0)
+		horn.Color = Color3.new(0.8, 0.8, 0.8)
+		horn.Parent = animal
+		local weldHorn = Instance.new("WeldConstraint")
+		weldHorn.Part0 = head
+		weldHorn.Part1 = horn
+		weldHorn.Parent = head
+	end
 
-    local legSize = Vector3.new(genome.size * 0.2, genome.size * 0.5, genome.size * 0.2)
-    local legPositions = {
-        Vector3.new(torsoSize.X/2, -torsoSize.Y/2, torsoSize.Z/2),
-        Vector3.new(-torsoSize.X/2, -torsoSize.Y/2, torsoSize.Z/2),
-        Vector3.new(torsoSize.X/2, -torsoSize.Y/2, -torsoSize.Z/2),
-        Vector3.new(-torsoSize.X/2, -torsoSize.Y/2, -torsoSize.Z/2)
-    }
+	-- *** LEGS ***
+	-- Leg length is based on speed, thickness is based on size
+	local legLength = (genome.speed / 20) * (genome.size * 0.4)
+	local legThickness = genome.size * 0.15
+	local legSize = Vector3.new(legThickness, legLength, legThickness)
 
-    for i, pos in ipairs(legPositions) do
-        local leg = Instance.new("Part")
-        leg.Name = "Leg" .. i
-        leg.Size = legSize
-        leg.Position = pos
-        leg.Color = baseColor
-        leg.Parent = animal
-        local weldLeg = Instance.new("WeldConstraint")
-        weldLeg.Part0 = torso
-        weldLeg.Part1 = leg
-        weldLeg.Parent = torso
-    end
+	local legPositions = {
+		Vector3.new(torsoSize.X / 2, -torsoSize.Y / 2, torsoSize.Z / 2),
+		Vector3.new(-torsoSize.X / 2, -torsoSize.Y / 2, torsoSize.Z / 2),
+		Vector3.new(torsoSize.X / 2, -torsoSize.Y / 2, -torsoSize.Z / 2),
+		Vector3.new(-torsoSize.X / 2, -torsoSize.Y / 2, -torsoSize.Z / 2)
+	}
 
-    local humanoid = Instance.new("Humanoid")
-    humanoid.Parent = animal
+	for i, pos in ipairs(legPositions) do
+		local leg = Instance.new("Part")
+		leg.Name = "Leg" .. i
+		leg.Size = legSize
+		leg.Position = pos
+		leg.Color = baseColor
+		leg.Parent = animal
+		local weldLeg = Instance.new("WeldConstraint")
+		weldLeg.Part0 = torso
+		weldLeg.Part1 = leg
+		weldLeg.Parent = torso
+	end
 
-    animal.PrimaryPart = torso
-    animal:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+	local humanoid = Instance.new("Humanoid")
+	humanoid.Parent = animal
 
-    return animal
+	animal.PrimaryPart = torso
+	animal:SetPrimaryPartCFrame(CFrame.new(spawnPosition))
+
+	return animal
 end
 
 --- Creates a model for a water-based animal.
@@ -159,8 +174,8 @@ function AnimalService.spawnAnimal()
     print("Attempting to spawn a ".. (animalType == 1 and "Land" or "Water") .." animal...")
 
     while not positionFound and attempts < maxAttempts do
-        local x = math.random(-1024, 1024)
-        local z = math.random(-1024, 1024)
+        local x = math.random(-4096, 4096)
+        local z = math.random(-4096, 4096)
 
         groundPosition = WorldUtil.getGroundPosition(x, z)
 
@@ -221,8 +236,8 @@ end
 -- loop to the global `TimeService` tick.
 function AnimalService.start()
     print("AnimalService started")
-    -- Spawn a mix of animals to start
-    for _ = 1, 20 do
+    -- Spawn a small, balanced population to start
+    for _ = 1, 10 do
         AnimalService.spawnAnimal()
     end
 

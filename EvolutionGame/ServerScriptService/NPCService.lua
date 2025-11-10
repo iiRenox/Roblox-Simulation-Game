@@ -91,8 +91,8 @@ function NPCService.spawnNPC()
     local attempts = 0
 
     repeat
-        local x = math.random(-1024, 1024)
-        local z = math.random(-1024, 1024)
+        local x = math.random(-4096, 4096)
+        local z = math.random(-4096, 4096)
 
         groundPosition = WorldUtil.getGroundPosition(x, z)
 
