@@ -176,8 +176,10 @@ function NatureService.generateWorld()
 				local waterPosition = Vector3.new(worldX, baseHeight + waterSize.Y / 2, worldZ)
 				terrain:FillBlock(CFrame.new(waterPosition), waterSize, Enum.Material.Water)
 			else
-				-- Fill the block with the determined material
-				terrain:FillBlock(CFrame.new(position), size, material)
+				-- Ensure the size is positive before trying to fill the block
+				if size.Y > 0 then
+					terrain:FillBlock(CFrame.new(position), size, material)
+				end
 			end
 		end
 		if x % 64 == 0 then task.wait() end
