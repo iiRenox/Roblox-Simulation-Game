@@ -142,9 +142,10 @@ function NPC:update(deltaTime, activeNPCs, activePlants, spawnNPC)
     -- Handle actions based on state
     if self.state == "Gathering" then
         local plant = self:findNearestResource(activePlants)
-        if plant then
+        if plant and plant.model and plant.model.PrimaryPart then
             self:moveTo(plant.model.PrimaryPart.Position)
-            if (self.model.PrimaryPart.Position - plant.model.PrimaryPart.Position).Magnitude < 10 then
+            -- Verify the plant still exists before trying to eat it
+            if plant.model and plant.model.PrimaryPart and (self.model.PrimaryPart.Position - plant.model.PrimaryPart.Position).Magnitude < 10 then
                 self.hunger = self.hunger - plant.genome.nutritionalValue
                 plant:die()
             end

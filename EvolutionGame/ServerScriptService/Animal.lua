@@ -33,6 +33,7 @@ local animalGenomeTemplate = {
 function Animal.new()
     local self = setmetatable({}, Animal)
 
+    self.type = "Animal"
     self.model = nil
     self.humanoid = nil
     self.genome = Genome.create(animalGenomeTemplate)
@@ -114,9 +115,9 @@ function Animal:eat(food)
     if not food or not food.model or not food.model.PrimaryPart then return end
 
     print("An animal is eating a " .. food.model.Name)
-    if food:IsA("Animal") then
+    if food.type == "Animal" then
         self.hunger = self.hunger - food.genome.size -- Simple nutrition for now
-    else
+    else -- It's a plant
         self.hunger = self.hunger - food.genome.nutritionalValue
     end
     self.state = "Idle"

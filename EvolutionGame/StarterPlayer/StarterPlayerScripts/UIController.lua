@@ -96,22 +96,27 @@ pauseButton.MouseButton1Click:Connect(function()
 	pauseButton.Text = (pauseButton.Text == "Pause") and "Resume" or "Pause"
 end)
 
+local isEnding = false
 endButton.MouseButton1Click:Connect(function()
+	if isEnding then return end
+	isEnding = true
+
 	-- Don't pause immediately, let it run for a moment to collect final data
 	endButton.Text = "Ending..."
-	endButton.Enabled = false
-	pauseButton.Enabled = false
+	endButton.AutoButtonColor = false
+	pauseButton.AutoButtonColor = false
+
 
 	task.wait(2) -- Wait for 2 seconds to ensure at least one more data point is gathered
 
 	toggleSimulationEvent:FireServer() -- Now pause the sim
 
 	local data = requestDataFunction:InvokeServer()
-	if data then
+	if data and #data > 0 then
 		renderGraph(data, "Animals")
 		dataScreen.Visible = true
 	else
-		warn("No data received from server for graph.")
+		warn("No data, or not enough data, received from server for graph.")
 	end
 end)
 

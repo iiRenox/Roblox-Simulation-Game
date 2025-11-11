@@ -35,6 +35,7 @@ local plantGenomeTemplate = {
 function Plant.new(model)
     local self = setmetatable({}, Plant)
 
+    self.type = "Plant"
     self.model = model
     self.genome = Genome.create(plantGenomeTemplate)
     self.age = 0
