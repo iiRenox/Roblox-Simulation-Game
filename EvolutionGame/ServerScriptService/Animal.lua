@@ -163,17 +163,21 @@ end
 
 --- Initiates the breeding process with a mate.
 -- Creates a new offspring by combining and mutating the parents' genomes.
+-- The new genome is then passed to the spawn function.
 -- @param mate table The other animal to breed with.
 -- @param spawnAnimal function A function passed from the AnimalService to spawn a new animal.
 function Animal:breedWith(mate, spawnAnimal)
     print("Two animals are breeding!")
 
-    local newAnimal = spawnAnimal()
+    -- 1. Create the offspring's genome first
+    local combinedGenome = Genome.combine(self.genome, mate.genome, animalGenomeTemplate)
+    local newGenome = Genome.mutate(combinedGenome, animalGenomeTemplate, 0.1)
+
+    -- 2. Pass the created genome to the spawn function
+    local newAnimal = spawnAnimal(newGenome)
 
     if newAnimal then
-        local combinedGenome = Genome.combine(self.genome, mate.genome, animalGenomeTemplate)
-        newAnimal.genome = Genome.mutate(combinedGenome, animalGenomeTemplate, 0.1)
-        print("A new animal has been born!")
+        print("A new animal has been born with inherited traits!")
     end
 
     self.state = "Idle"
@@ -210,9 +214,10 @@ function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
 
     if self.state == "Foraging" then
         local food = self:findFood(activeAnimals, activePlants)
-        if food then
+        if food and food.model and food.model.PrimaryPart then
             self:moveTo(food.model.PrimaryPart.Position)
-            if (self.model.PrimaryPart.Position - food.model.PrimaryPart.Position).Magnitude < 10 then
+            -- Re-verify the target exists before acting on it
+            if food and food.model and food.model.PrimaryPart and (self.model.PrimaryPart.Position - food.model.PrimaryPart.Position).Magnitude < 10 then
                 self:eat(food)
             end
         else
@@ -226,7 +231,7 @@ function Animal:update(deltaTime, activeAnimals, activePlants, spawnAnimal)
         local mate = self:findMate(activeAnimals)
         if mate and mate.model and mate.model.PrimaryPart then
             self:moveTo(mate.model.PrimaryPart.Position)
-            if (self.model.PrimaryPart.Position - mate.model.PrimaryPart.Position).Magnitude < 10 then
+            if mate and mate.model and mate.model.PrimaryPart and (self.model.PrimaryPart.Position - mate.model.PrimaryPart.Position).Magnitude < 10 then
                 self:breedWith(mate, spawnAnimal)
             end
         else
@@ -264,8 +269,10 @@ function Animal:findNearestAlly(activeAnimals)
     local minDistance = math.huge
     local searchRadius = self.genome.eyesight
 
+    if not self.model or not self.model.PrimaryPart then return nil end
+
     for _, otherAnimal in ipairs(activeAnimals) do
-        if otherAnimal and otherAnimal.model and otherAnimal ~= self and otherAnimal.genome.sociality == "Herd" then
+        if otherAnimal and otherAnimal.model and otherAnimal.model.PrimaryPart and otherAnimal ~= self and otherAnimal.genome.sociality == "Herd" then
             local distance = (self.model.PrimaryPart.Position - otherAnimal.model.PrimaryPart.Position).Magnitude
             if distance < minDistance and distance < searchRadius then
                 minDistance = distance

@@ -120,8 +120,9 @@ end
 -- The function randomly decides whether to spawn a land or water animal, then
 -- searches for a suitable location. If successful, it creates the animal object
 -- and its model, and adds it to the simulation.
+-- @param genomeOverride table? An optional genome to assign to the new animal. If nil, a random one is created.
 -- @return table? The new Animal object, or nil if no valid spawn location was found.
-function AnimalService.spawnAnimal()
+function AnimalService.spawnAnimal(genomeOverride)
     local animalType = math.random(1, 2)
     local maxAttempts = 500 -- Increased attempts to ensure spawning
     local attempts = 0
@@ -150,6 +151,9 @@ function AnimalService.spawnAnimal()
 
     if positionFound then
         local animalObject = Animal.new() -- Create the data object first
+        if genomeOverride then
+            animalObject.genome = genomeOverride
+        end
         local animalModel
 
         if animalType == 1 then
